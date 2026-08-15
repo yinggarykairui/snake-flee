@@ -28,6 +28,12 @@
   // escape reads as a reaction to the snake rather than a random walk.
   var FEAR_RADIUS = 5;
 
+  // The food is half the snake's speed: it takes at most one step per two
+  // snake steps. At equal speed a scared food matches every move the head
+  // makes, the gap never closes and the game is unwinnable — this is the
+  // number that makes the chase a chase rather than a stalemate.
+  var FOOD_STEP_EVERY = 2;
+
   // Palette duplicated from style.css: canvas cannot read CSS custom
   // properties cheaply per frame, and these two must stay in step.
   var C_BOARD = '#e8e2d6';
@@ -160,6 +166,7 @@
       food: null,
       score: 0,
       grow: 0,
+      clock: 0,
       over: false
     };
     reset(g);
@@ -174,6 +181,7 @@
     g.dirMoved = DIRS.right;
     g.score = 0;
     g.grow = 0;
+    g.clock = 0;
     g.over = false;
     g.food = spawnFood(g);
     return g;
@@ -230,12 +238,16 @@
     else g.snake.pop();
 
     if (ate) {
+      g.clock = 0;
       g.food = spawnFood(g);
       return 'eat';
     }
 
     // Food reacts after the snake has moved, so it flees the head's new cell.
-    g.food = fleeStep(g.food, g.snake[0], occupiedSet(g.snake), g.cols, g.rows, FEAR_RADIUS);
+    g.clock += 1;
+    if (g.clock % FOOD_STEP_EVERY === 0) {
+      g.food = fleeStep(g.food, g.snake[0], occupiedSet(g.snake), g.cols, g.rows, FEAR_RADIUS);
+    }
     return 'move';
   }
 
@@ -488,7 +500,7 @@
   global.SnakeFlee = {
     COLS: COLS, ROWS: ROWS, DIRS: DIRS,
     BASE_MS: BASE_MS, RAMP_MS_PER_POINT: RAMP_MS_PER_POINT, FLOOR_MS: FLOOR_MS,
-    FEAR_RADIUS: FEAR_RADIUS,
+    FEAR_RADIUS: FEAR_RADIUS, FOOD_STEP_EVERY: FOOD_STEP_EVERY,
     wrap: wrap, key: key, stepIntervalMs: stepIntervalMs, isOpposite: isOpposite,
     torusDelta: torusDelta, torusDist2: torusDist2, fleeStep: fleeStep,
     occupiedSet: occupiedSet,

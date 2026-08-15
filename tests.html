@@ -124,6 +124,26 @@
     eq('sweep: motionless outside the fear radius', bad.restless, 0);
   })();
 
+  // ------------------------------------------------------------ flee cadence
+  (function () {
+    // The food moves once per two snake steps. At equal speed a head-on chase
+    // never closes and the game cannot be won, so this cadence is what makes
+    // the food catchable at all.
+    var g = S.createGame({ rng: function () { return 0; } });
+    g.snake = [{ x: 5, y: 10 }, { x: 4, y: 10 }, { x: 3, y: 10 }];
+    g.dir = S.DIRS.right; g.dirMoved = S.DIRS.right; g.clock = 0;
+    g.food = { x: 8, y: 10 };                        // 3 cells ahead, inside the radius
+    S.tick(g);
+    ok('food holds still on the first snake step', g.food.x === 8 && g.food.y === 10,
+      JSON.stringify(g.food));
+    S.tick(g);
+    ok('food flees on the second snake step', g.food.x === 9 && g.food.y === 10,
+      JSON.stringify(g.food));
+    S.tick(g);
+    eq('the chase closes: gap is now 1', S.torusDist2(g.food.x, g.food.y, g.snake[0].x, g.snake[0].y, N, N), 1);
+    eq('a fleeing food can in fact be caught', S.tick(g), 'eat');
+  })();
+
   // -------------------------------------------------------------- speed ramp
   eq('ramp: 165 ms/step at score 0', S.stepIntervalMs(0), 165);
   eq('ramp: -4 ms per point', S.stepIntervalMs(1), 161);
