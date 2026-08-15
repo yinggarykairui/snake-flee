@@ -57,6 +57,35 @@
     return ms < FLOOR_MS ? FLOOR_MS : ms;
   }
 
+  /* localStorage holds one string and anything can be in it — a stale value,
+     hand-edited junk, or a huge blob from another app on the same origin.
+     Decode defensively: only a plain non-negative integer counts, everything
+     else degrades to 0. The length guard runs first so a 10 kB blob is never
+     coerced. */
+  var BEST_KEY = 'snake-flee.best';
+  var BEST_MAX = 1e6;
+
+  function decodeBest(raw) {
+    if (typeof raw !== 'string' || raw.length === 0 || raw.length > 12) return 0;
+    var n = Number(raw);
+    if (!isFinite(n) || Math.floor(n) !== n || n < 0 || n > BEST_MAX) return 0;
+    return n;
+  }
+
+  function loadBest() {
+    try {
+      return decodeBest(global.localStorage.getItem(BEST_KEY));
+    } catch (e) {
+      return 0; // private mode / disabled storage throws on access
+    }
+  }
+
+  function saveBest(n) {
+    try {
+      global.localStorage.setItem(BEST_KEY, String(n));
+    } catch (e) { /* nothing to do; the run still plays */ }
+  }
+
   function isOpposite(a, b) {
     return !!a && !!b && a.x === -b.x && a.y === -b.y;
   }
@@ -295,7 +324,55 @@
     var paused = false;
     var acc = 0;
     var prev = 0;
+    var best = loadBest();
     var scoreEl = document.getElementById('score');
+    var bestEl = document.getElementById('best');
+    var overlay = document.getElementById('overlay');
+    var oTitle = document.getElementById('overlayTitle');
+    var oLine = document.getElementById('overlayLine');
+    var oHint = document.getElementById('overlayHint');
+    var pauseBtn = document.getElementById('pauseBtn');
+    var shownState = '';
+
+    bestEl.textContent = String(best);
+
+    function restart() {
+      reset(game);
+      paused = false;
+      acc = 0;
+    }
+
+    function togglePause() {
+      if (!game.over) paused = !paused;
+    }
+
+    function onGameOver() {
+      if (game.score > best) {
+        best = game.score;
+        saveBest(best);
+      }
+    }
+
+    function syncChrome() {
+      var state = game.over ? 'over' : (paused ? 'paused' : 'run');
+      if (state === shownState) return;
+      shownState = state;
+      pauseBtn.textContent = paused ? 'resume' : 'pause';
+      if (state === 'run') {
+        overlay.hidden = true;
+        return;
+      }
+      overlay.hidden = false;
+      if (state === 'over') {
+        oTitle.textContent = 'game over';
+        oLine.textContent = 'score ' + game.score + '  ·  best ' + best;
+        oHint.textContent = 'press r or tap the board to play again';
+      } else {
+        oTitle.textContent = 'paused';
+        oLine.textContent = 'score ' + game.score + '  ·  best ' + best;
+        oHint.textContent = 'press p or space to resume';
+      }
+    }
 
     function onKey(e) {
       var name = KEYMAP[e.key];
@@ -306,14 +383,16 @@
       }
       if (e.key === 'p' || e.key === 'P' || e.key === ' ') {
         e.preventDefault();
-        if (!game.over) paused = !paused;
+        togglePause();
       } else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
-        reset(game);
-        paused = false;
+        restart();
       }
     }
     global.addEventListener('keydown', onKey);
+
+    pauseBtn.addEventListener('click', togglePause);
+    document.getElementById('restartBtn').addEventListener('click', restart);
 
     function frame(now) {
       var l = layout();
@@ -326,7 +405,7 @@
         var budget = 4; // hard cap on catch-up steps per frame
         while (acc >= interval && budget-- > 0) {
           acc -= interval;
-          tick(game);
+          if (tick(game) === 'dead') { onGameOver(); break; }
           interval = stepIntervalMs(game.score);
         }
         if (acc >= interval) acc = 0;
@@ -334,6 +413,8 @@
         acc = 0;
       }
       scoreEl.textContent = String(game.score);
+      bestEl.textContent = String(best);
+      syncChrome();
       draw(game, l.size, l.dpr);
       global.requestAnimationFrame(frame);
     }
@@ -347,6 +428,7 @@
     wrap: wrap, key: key, stepIntervalMs: stepIntervalMs, isOpposite: isOpposite,
     torusDelta: torusDelta, torusDist2: torusDist2, fleeStep: fleeStep,
     occupiedSet: occupiedSet,
+    BEST_KEY: BEST_KEY, decodeBest: decodeBest, loadBest: loadBest, saveBest: saveBest,
     createGame: createGame, reset: reset, turn: turn, tick: tick, spawnFood: spawnFood
   };
 

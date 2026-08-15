@@ -17,10 +17,21 @@
   </header>
 
   <div class="board" id="board">
-    <canvas id="canvas" width="480" height="480" aria-label="Snake board"></canvas>
+    <div class="stage" id="stage">
+      <canvas id="canvas" width="480" height="480" aria-label="Snake board"></canvas>
+      <div class="overlay" id="overlay" hidden>
+        <p class="over-title" id="overlayTitle">paused</p>
+        <p class="over-line" id="overlayLine"></p>
+        <p class="over-hint" id="overlayHint"></p>
+      </div>
+    </div>
   </div>
 
   <footer class="foot">
+    <div class="controls">
+      <button class="btn" id="pauseBtn" type="button">pause</button>
+      <button class="btn" id="restartBtn" type="button">restart</button>
+    </div>
     <p class="hint">arrows / wasd to steer &middot; p or space to pause &middot; r to restart</p>
   </footer>
 </main>

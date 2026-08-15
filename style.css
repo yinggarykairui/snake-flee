@@ -69,16 +69,63 @@ body {
   place-items: center;
 }
 
+/* JS sets the pixel size each layout pass; these are only the pre-script
+   defaults so nothing flashes oversized before the first frame. */
 canvas {
   display: block;
-  width: 100%;
-  height: auto;
   max-width: 100%;
   background: var(--board);
   border-radius: var(--radius);
+  touch-action: none; /* swipes steer, they must not scroll or zoom */
 }
 
-.foot { flex: 0 0 auto; }
+.stage { position: relative; line-height: 0; }
+
+/* Overlay sits on the board, never outside it, so nothing overlaps the HUD. */
+.overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  background: rgba(244, 240, 232, 0.93);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1.4;
+  text-align: center;
+  padding: 12px;
+}
+.overlay[hidden] { display: none; }
+.over-title { margin: 0; font-size: 20px; font-weight: 600; }
+.over-line { margin: 0; font-size: 15px; font-variant-numeric: tabular-nums; }
+.over-hint { margin: 0; font-size: 13px; color: var(--muted); }
+
+.foot {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.controls { display: flex; gap: 8px; }
+
+.btn {
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 16px;
+  min-height: 38px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.btn:hover { background: var(--board); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 .hint {
   margin: 0;
   color: var(--muted);
