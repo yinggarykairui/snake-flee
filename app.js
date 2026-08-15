@@ -527,10 +527,19 @@
     stage.addEventListener('touchend', endTouch, { passive: false });
     stage.addEventListener('touchcancel', function () { touchId = null; });
 
-    // Coming back from a background tab: drop whatever time passed instead of
-    // replaying it as a burst of steps.
+    /* Leaving the tab pauses the run. A hidden tab still gets throttled
+       animation frames, so the snake used to keep stepping where nobody could
+       see it and a run could end off-screen. It stays paused on return —
+       coming back into a moving snake is the same defect one frame later.
+       The anti-burst reset stays: whatever time passed is dropped rather than
+       replayed as a burst of steps. */
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) { prev = 0; acc = 0; }
+      if (document.hidden) {
+        if (!game.over) paused = true;
+      } else {
+        prev = 0;
+        acc = 0;
+      }
     });
 
     function frame(now) {
