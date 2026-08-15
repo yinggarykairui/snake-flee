@@ -329,33 +329,108 @@
   var lastSize = 0;
   var lastDpr = 0;
 
-  // Measured from the column and the two fixed rows, never from the board
-  // itself: the board's height comes from the canvas, so measuring it would
-  // be a feedback loop. Runs every frame, which also covers window resizes
-  // and a devicePixelRatio change at an unchanged CSS size.
-  function layout() {
-    var wrap = document.querySelector('.wrap');
-    var hud = document.querySelector('.hud');
-    var foot = document.querySelector('.foot');
-    var cs = global.getComputedStyle(wrap);
+  // The row layout: HUD and footer either side of the board (see .lay-row in
+  // style.css) instead of above and below it.
+  var ROW_CLASS = 'lay-row';
+  var MIN_SIZE = 160;
+
+  var els = null;
+  function refs() {
+    if (!els) {
+      els = {
+        wrap: document.querySelector('.wrap'),
+        hud: document.querySelector('.hud'),
+        foot: document.querySelector('.foot')
+      };
+    }
+    return els;
+  }
+
+  /* The board size the DOM would give right now, in whichever arrangement is
+     currently applied. Measured from the column and the two fixed rows, never
+     from the board itself: the board's height comes from the canvas, so
+     measuring it would be a feedback loop.
+     `cap` is the column layout's own width allowance (max-width minus the
+     padding — 528 px on any window wide enough to reach it). The row
+     arrangement exists to recover space that stacking wasted, never to become
+     a second, larger design, so it is held to the same ceiling. That is what
+     makes the ceiling self-limiting: no height gate is needed, because past
+     the height where the column reaches 528 the row can no longer beat it. */
+  function fitSize(row, viewH, cap) {
+    var e = refs();
+    var cs = global.getComputedStyle(e.wrap);
     var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
     var padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    var availW, availH;
+    if (row) {
+      var colGaps = (parseFloat(cs.columnGap) || 0) * 2;   // 3 items, 2 gaps
+      availW = e.wrap.clientWidth - padX - e.hud.offsetWidth - e.foot.offsetWidth - colGaps;
+      availH = viewH - padY;
+    } else {
+      var rowGaps = (parseFloat(cs.rowGap) || 0) * 2;
+      availW = e.wrap.clientWidth - padX;
+      availH = viewH - padY - e.hud.offsetHeight - e.foot.offsetHeight - rowGaps;
+    }
+    var fit = Math.min(availW, availH);
+    if (cap > 0 && fit > cap) fit = cap;
+    return Math.max(MIN_SIZE, Math.floor(fit));
+  }
+
+  /* Which arrangement leaves the larger board? Measured, not guessed: both
+     candidates are laid out and measured here, in one synchronous pass, so
+     nothing is ever painted in the losing one. The canvas is collapsed for
+     the duration so the chrome is measured against the window rather than
+     against the board it is about to size — otherwise the previous board's
+     overflow (and its scrollbar) leans on the answer.
+     Ties go to the column; the row has to win outright. Both candidates are
+     non-decreasing in window width and in window height (more room never
+     makes either arrangement's board smaller) and both are held under the
+     same ceiling, so the larger of the two is non-decreasing in both
+     directions as well. That is the property the old media query broke: it
+     cost 137 px of board at 560x500 for one extra pixel of width, and 126 px
+     at 844x521 for one extra pixel of height. */
+  function chooseLayout(viewH) {
+    var e = refs();
+    var had = e.wrap.classList.contains(ROW_CLASS);
+    var cw = canvas.style.width, ch = canvas.style.height;
+    canvas.style.width = '0px';
+    canvas.style.height = '0px';
+    e.wrap.classList.remove(ROW_CLASS);
+    var cs = global.getComputedStyle(e.wrap);
+    var cap = e.wrap.clientWidth -
+      (parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight));
+    var colSize = fitSize(false, viewH, 0);
+    e.wrap.classList.add(ROW_CLASS);
+    var rowSize = fitSize(true, viewH, cap);
+    if (!had) e.wrap.classList.remove(ROW_CLASS);
+    canvas.style.width = cw;
+    canvas.style.height = ch;
+    return { row: rowSize > colSize, cap: cap };
+  }
+
+  // Keyed on innerWidth/innerHeight, not clientWidth: a scrollbar appearing
+  // must not re-open the question and let the answer flip back and forth.
+  var lastWindowKey = '';
+  var rowMode = false;
+  var rowCap = 0;
+
+  // Runs every frame, which also covers window resizes and a devicePixelRatio
+  // change at an unchanged CSS size. Only the arrangement is cached; the size
+  // itself is re-measured every frame.
+  function layout() {
     // The height comes from the viewport, never from the column: the column
     // is min-height now, so it grows with the board, and measuring it would
     // be the feedback loop this function exists to avoid.
     var viewH = document.documentElement.clientHeight;
-    var row = cs.flexDirection === 'row';   // the landscape rule, read back
-    var availW, availH;
-    if (row) {
-      var colGaps = (parseFloat(cs.columnGap) || 0) * 2;
-      availW = wrap.clientWidth - padX - hud.offsetWidth - foot.offsetWidth - colGaps;
-      availH = viewH - padY;
-    } else {
-      var rowGaps = (parseFloat(cs.rowGap) || 0) * 2;
-      availW = wrap.clientWidth - padX;
-      availH = viewH - padY - hud.offsetHeight - foot.offsetHeight - rowGaps;
+    var wk = (global.innerWidth || 0) + 'x' + (global.innerHeight || 0);
+    if (wk !== lastWindowKey) {
+      lastWindowKey = wk;
+      var pick = chooseLayout(viewH);
+      rowMode = pick.row;
+      rowCap = pick.cap;
+      refs().wrap.classList.toggle(ROW_CLASS, rowMode);
     }
-    var size = Math.max(160, Math.floor(Math.min(availW, availH)));
+    var size = fitSize(rowMode, viewH, rowMode ? rowCap : 0);
     var dpr = global.devicePixelRatio || 1;
     if (size !== lastSize || dpr !== lastDpr) {
       lastSize = size;

@@ -203,30 +203,37 @@ canvas {
   }
 }
 
-/* Landscape, and short enough that stacking wastes the screen: put the HUD
-   and the footer either side of the board instead of above and below it. A
-   844x320 window went from a 187 px board (9.35 px cells) with most of the
-   width empty to a board limited only by the height. Portrait is untouched —
-   this needs a landscape orientation, a short viewport *and* 560 px of width
-   to fire, so a narrow short window keeps the ordinary scrolling column, and
-   layout() reads the flex direction back rather than assuming one. */
-@media (orientation: landscape) and (max-height: 520px) and (min-width: 560px) {
-  .wrap {
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    max-width: none;
-    gap: 14px;
-  }
-  .hud {
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 8px;
-    min-width: 104px;
-    max-width: 140px;
-  }
-  .scores { flex-direction: column; gap: 4px; }
-  .foot { justify-content: center; max-width: 156px; }
-  .hint { text-align: left; }
+/* Short viewports: put the HUD and the footer either side of the board
+   instead of above and below it, so the board is limited by the height
+   instead of by what the two stacked rows leave over. On 844x320 that is a
+   187 px board turning into 296 px.
+
+   This is a class, not a media query, and JS owns it. A query can only test
+   the window; which arrangement gives the larger board depends on the HUD's
+   and the footer's own measured size in each of them, and the old
+   `(orientation: landscape) and (max-height: 520px) and (min-width: 560px)`
+   guessed at that. It guessed wrong twice: 560x500 rendered a 204 px board
+   where 559x500 — one pixel narrower, the same page in the column layout —
+   rendered 341 px, and 844x521 rendered 362 px where 844x520 rendered 488.
+   chooseLayout() in app.js now measures both arrangements and adds .lay-row
+   only when the row actually wins, holding it to the same 528 px ceiling the
+   column's max-width imposes, so neither a pixel of width nor a pixel of
+   height can cost board size and a tall window still gets the column. */
+.wrap.lay-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  max-width: none;
+  gap: 14px;
 }
+.lay-row .hud {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  min-width: 104px;
+  max-width: 140px;
+}
+.lay-row .scores { flex-direction: column; gap: 4px; }
+.lay-row .foot { justify-content: center; max-width: 156px; }
+.lay-row .hint { text-align: left; }
