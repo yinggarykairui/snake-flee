@@ -34,12 +34,20 @@
   // number that makes the chase a chase rather than a stalemate.
   var FOOD_STEP_EVERY = 2;
 
-  // Palette duplicated from style.css: canvas cannot read CSS custom
-  // properties cheaply per frame, and these two must stay in step.
+  /* Canvas palette. Canvas cannot read CSS custom properties cheaply per
+     frame, so the four values that also exist in style.css are duplicated
+     here and must stay in step, hex for hex:
+       C_BOARD  = --board   C_LINE = --line
+       C_INK    = --ink     C_ACCENT = --accent
+     C_HEAD has no CSS twin — nothing outside the canvas is drawn in it.
+     Contrast measured on the rendered canvas, not on these strings:
+       head on board 3.42:1, head on body 3.68:1 (the head is the *lighter*
+       mark and the larger one — see draw()); ink on board 12.6:1;
+       accent food on board 4.89:1; grid line on board 1.37:1 (decoration). */
   var C_BOARD = '#e8e2d6';
-  var C_LINE = '#ddd5c5';
+  var C_LINE = '#cbc2ae';
   var C_INK = '#23201c';
-  var C_HEAD = '#3c372f';
+  var C_HEAD = '#807769';
   var C_ACCENT = '#a83c1b';
 
   var DIRS = {
@@ -290,11 +298,16 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.drawImage(boardLayer(cssSize, dpr), 0, 0, cssSize, cssSize);
 
+    /* Two cues for which end is the head, not one: it is the lighter mark
+       (the body is near-black ink) and it fills more of its cell. Drawn last
+       so it sits over the neck when the two overlap. */
     var inset = cell * 0.12;
+    var headInset = cell * 0.03;
     for (var i = g.snake.length - 1; i >= 0; i--) {
+      var pad = i === 0 ? headInset : inset;
       ctx.fillStyle = i === 0 ? C_HEAD : C_INK;
-      ctx.fillRect(g.snake[i].x * cell + inset, g.snake[i].y * cell + inset,
-        cell - inset * 2, cell - inset * 2);
+      ctx.fillRect(g.snake[i].x * cell + pad, g.snake[i].y * cell + pad,
+        cell - pad * 2, cell - pad * 2);
     }
 
     ctx.fillStyle = C_ACCENT;

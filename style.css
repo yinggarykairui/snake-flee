@@ -1,12 +1,16 @@
 /* Paper palette. Contrast measured against the *adjacent* surface:
-   ink #23201c on paper = 14.3:1, on the board = 12.6:1; snake head on the
-   board = 9.2:1; muted text on paper = 6.6:1; the accent food mark on the
-   board = 4.9:1 (needs 3:1). --line and --frame are decorative rules only. */
+   ink #23201c on paper = 14.3:1, on the board = 12.6:1; muted text on paper
+   = 6.6:1; the accent food mark on the board = 4.9:1 (needs 3:1); the snake
+   head on the board = 3.4:1 and on the body = 3.7:1 (needs 3:1 — measured on
+   the rendered canvas, see the palette note in app.js). --edge is the only
+   affordance the buttons have, so it is held to 3:1 as well: 4.12:1 on paper,
+   3.63:1 on the hover fill. --line and --frame are decorative rules. */
 :root {
   --paper: #f4f0e8;
   --board: #e8e2d6;
-  --line: #d6cebd;
+  --line: #cbc2ae;
   --frame: #cdc3ae;
+  --edge: #7a736a;
   --ink: #23201c;
   --muted: #5b544a;
   --accent: #a83c1b;
@@ -130,7 +134,7 @@ canvas {
   font-size: 14px;
   color: var(--ink);
   background: transparent;
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: 999px;
   padding: 7px 16px;
   min-height: 38px;
