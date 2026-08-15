@@ -378,8 +378,13 @@
     return !e.ctrlKey && !e.metaKey && !e.altKey;
   }
 
+  // Coarse pointer: the on-page copy has to describe the controls the reader
+  // actually has, so this decides which wording ships, not a user-agent sniff.
+  var COARSE = !!(global.matchMedia && global.matchMedia('(pointer: coarse)').matches);
+
   function boot() {
     var game = createGame({});
+    var started = false;   // the first run waits for the player (see start())
     var paused = false;
     var acc = 0;
     var prev = 0;
@@ -414,8 +419,22 @@
       }
     }
 
+    /* The first run is held until the player asks for it: a cold load used to
+       move the head about five cells while you were still reading the page,
+       and it is also the one piece of motion that runs before any input,
+       which is exactly what prefers-reduced-motion is about. The board is
+       drawn and visible behind the prompt the whole time. Only the first run
+       is gated — pressing r or tapping to play again is already an input. */
+    function start() {
+      if (started) return;
+      started = true;
+      prev = 0;
+      acc = 0;
+    }
+
     function restart() {
       reset(game);
+      started = true;
       paused = false;
       acc = 0;
       beatThisRun = false;
@@ -450,24 +469,32 @@
     });
 
     function syncChrome() {
-      var state = game.over ? 'over' : (paused ? 'paused' : 'run');
+      var state = game.over ? 'over' : (!started ? 'start' : (paused ? 'paused' : 'run'));
       if (state === shownState) return;
       shownState = state;
       pauseBtn.textContent = paused ? 'resume' : 'pause';
       /* togglePause() early-returns once the run is over, so leaving the
          button enabled offered a full hover-and-focus affordance for nothing.
          Restart re-enables it: the flag is derived from the state, not
-         latched. */
-      pauseBtn.disabled = game.over;
+         latched. Nothing to pause before the first run either. */
+      pauseBtn.disabled = game.over || !started;
       if (state === 'run') {
         overlay.hidden = true;
+        overlay.className = 'overlay';
         return;
       }
       overlay.hidden = false;
+      overlay.className = state === 'start' ? 'overlay is-start' : 'overlay';
       if (state === 'over') {
         oTitle.textContent = 'game over';
         oLine.textContent = 'score ' + game.score + '  ·  best ' + best;
-        oHint.textContent = 'press r or tap the board to play again';
+        oHint.textContent = COARSE ? 'tap the board to play again'
+                                   : 'press r or tap the board to play again';
+      } else if (state === 'start') {
+        oTitle.textContent = 'ready';
+        oLine.textContent = 'the food runs away from you';
+        oHint.textContent = COARSE ? 'swipe the board to start'
+                                   : 'press an arrow key to start';
       } else {
         oTitle.textContent = 'paused';
         oLine.textContent = 'score ' + game.score + '  ·  best ' + best;
@@ -480,12 +507,14 @@
       var name = keyDir(e.key);
       if (name) {
         e.preventDefault();
+        start();
         turn(game, DIRS[name]);
         return;
       }
       if (e.key === 'p' || e.key === 'P' || e.key === ' ') {
         e.preventDefault();
-        togglePause();
+        if (started) togglePause();
+        else start();
       } else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         restart();
@@ -533,10 +562,13 @@
       var dy = t.clientY - startY;
       var adx = Math.abs(dx), ady = Math.abs(dy);
       if (Math.max(adx, ady) >= SWIPE_MIN) {
+        start();
         if (adx > ady) turn(game, dx > 0 ? DIRS.right : DIRS.left);
         else turn(game, dy > 0 ? DIRS.down : DIRS.up);
       } else if (game.over) {
         restart();
+      } else {
+        start();
       }
       e.preventDefault();
     }
@@ -551,7 +583,7 @@
        replayed as a burst of steps. */
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) {
-        if (!game.over) paused = true;
+        if (started && !game.over) paused = true;
       } else {
         prev = 0;
         acc = 0;
@@ -563,7 +595,7 @@
       // A backgrounded tab hands back one enormous dt; never replay it.
       var dt = prev ? Math.min(now - prev, 250) : 0;
       prev = now;
-      if (!paused && !game.over) {
+      if (started && !paused && !game.over) {
         acc += dt;
         var interval = stepIntervalMs(game.score);
         var budget = 4; // hard cap on catch-up steps per frame

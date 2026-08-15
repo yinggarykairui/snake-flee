@@ -117,6 +117,16 @@ canvas {
   text-align: center;
   padding: 12px;
 }
+/* The start gate does not veil the board at all — the board is the thing being
+   introduced. The prompt rides on its own paper plates instead, so the text
+   keeps its contrast and the grid behind it keeps all of its. */
+.overlay.is-start { background: transparent; }
+.overlay.is-start > p {
+  background: var(--paper);
+  border-radius: 6px;
+  padding: 1px 10px;
+}
+.overlay.is-start > p:empty { display: none; }
 .overlay[hidden] { display: none; }
 .over-title { margin: 0; font-size: 20px; font-weight: 600; }
 .over-line { margin: 0; font-size: 15px; font-variant-numeric: tabular-nums; }
@@ -160,4 +170,16 @@ canvas {
   color: var(--muted);
   font-size: 12.5px;
   text-align: center;
+}
+
+/* Nothing on this page transitions or animates today; the one piece of motion
+   is the run itself, and the start gate already holds that until the player
+   asks for it. This block is the standing promise for anything added later. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
