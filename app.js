@@ -490,21 +490,29 @@
     var shownBest = -1;
     var shownRecord = null;
     var beatThisRun = false;
-    var said = '';
+    var sayFlip = false;
 
-    // Anything worth saying goes through here, once. The overlay carries the
-    // ready / paused / game over states itself (role=status), so this region
-    // is left with the score, the record and coming back from a pause.
+    /* Anything worth saying goes through here. The overlay carries the
+       ready / paused / game over states itself (role=status), so this region
+       is left with the score, the record and coming back from a pause.
+       A live region only speaks when its text *changes*, so writing the same
+       string twice used to be silent: 'resumed' was announced on the first
+       resume of a page load and never again, however many times you paused.
+       The flip appends U+200B (zero width space) to every other utterance,
+       which makes each call a real text change while reading identically:
+       no repetition is dropped and nothing extra is said. */
     function say(msg) {
-      if (msg === said) return;
-      said = msg;
-      liveEl.textContent = msg;
+      sayFlip = !sayFlip;
+      liveEl.textContent = sayFlip ? msg : msg + '\u200B';
     }
 
     // The HUD is touched only when a number actually changes, not every frame.
     function syncHud() {
       if (game.score !== shownScore) {
-        var grew = game.score > shownScore;
+        // shownScore starts at the -1 sentinel: the first sync is the page
+        // painting what is already in the markup, not the player scoring, and
+        // 'score 0' before any input told a screen-reader user nothing.
+        var grew = shownScore >= 0 && game.score > shownScore;
         shownScore = game.score;
         scoreEl.textContent = String(game.score);
         // shownRecord still holds the previous frame's flag here, so the
