@@ -24,11 +24,24 @@ food measures its distance the same wrapped way you have to think about it.
 Every meal adds a segment and a point, and the step interval drops 4 ms per
 point from 165 ms down to an 80 ms floor. Running into yourself ends the run.
 
-The first run waits for your first key, tap or swipe, so the board is not
-already moving while you read this. Leaving the tab pauses the run rather than
-finishing it somewhere you cannot see. Your best score is kept in the browser,
-banked the moment you pass it rather than at the end of the run, and re-read
-from storage on every write so a second tab cannot overwrite it.
+The first run waits for you, so the board is not already moving while you read
+this: an arrow or WASD key, space, `p` or `r` starts it, and so does a tap, a
+swipe or a mouse click on the board. Nothing else does — `q`, `Escape`, `F1`
+and anything held with ctrl, meta or alt are left to the browser, so Ctrl+R
+still reloads. Once it is over, a tap, a swipe, a click or `r` plays again.
+Leaving the tab pauses the run rather than finishing it somewhere you cannot
+see. Your best score is kept in the browser, banked the moment you pass it
+rather than at the end of the run, and re-read from storage on every write so a
+second tab cannot overwrite it; a best another tab stores is picked up without
+a reload, and clearing storage elsewhere does not lower the number on screen
+until the page is loaded again.
+
+The board is a square sized to whatever the window leaves over. On a short
+window the HUD and the footer move to either side of it, but only when that
+arrangement measures larger than stacking them: both are laid out and measured
+on every resize, and the larger one wins. Swept one pixel at a time — every
+width from 480 to 900 px at six heights, every height from 300 to 620 px at six
+widths — no window loses board size by getting a pixel wider or a pixel taller.
 
 ## How to run
 
