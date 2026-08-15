@@ -78,17 +78,20 @@
      also accepts '0x10', '1e5', '0b11', '0o17', ' 9 ', '+5' and '5.0', and a
      fabricated '1e5' best can never be beaten. The length guard runs first so
      a 10 kB blob is never even matched against.
-     There is no !isFinite branch here because there is nothing for it to
-     catch: a string of at most 12 digits is at most 999999999999, which is
-     finite, an integer, and non-negative — so Infinity, fractions and
-     negatives are all already excluded by the two guards above. The range
-     guard still does work ('9999999' -> 0). */
+     There is no empty-string guard and no !isFinite branch here, because
+     neither has anything left to catch. /^[0-9]+$/ needs at least one digit,
+     so '' fails the digit test on its own; and a string of at most 12 digits
+     is at most 999999999999, which is finite, an integer and non-negative, so
+     Infinity, fractions and negatives are already excluded by the two guards
+     above. The range guard still does work ('9999999' -> 0). Both were
+     branches no input could reach and no test could kill — deleting them is
+     the same statement the comment makes, in code. */
   var BEST_KEY = 'snake-flee.best';
   var BEST_MAX = 1e6;
   var DIGITS = /^[0-9]+$/;
 
   function decodeBest(raw) {
-    if (typeof raw !== 'string' || raw.length === 0 || raw.length > 12) return 0;
+    if (typeof raw !== 'string' || raw.length > 12) return 0;
     if (!DIGITS.test(raw)) return 0;
     var n = Number(raw);
     return n > BEST_MAX ? 0 : n;
@@ -573,8 +576,17 @@
       commitBest(game.score);
     }
 
+    /* Keep-the-larger applies in both directions, on purpose. A `storage`
+       event with key === null means another tab cleared storage wholesale;
+       this tab still does not lower the best it is showing, and its next
+       commit writes that best back. The alternative — trusting a clear —
+       hands any tab the power to erase a real record, which is the defect
+       commitBest() exists to prevent. So a best cannot be cleared while a tab
+       that has seen it is open; closing the tabs and clearing does clear it.
+       Nothing on the page or in the README promises otherwise, and adding a
+       reset control is a feature, not this fix. */
     global.addEventListener('storage', function (e) {
-      if (e.key !== null && e.key !== BEST_KEY) return; // null = storage cleared
+      if (e.key !== null && e.key !== BEST_KEY) return;
       var v = loadBest();
       if (v > best) best = v;
     });
