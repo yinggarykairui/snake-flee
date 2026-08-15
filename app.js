@@ -74,16 +74,24 @@
   /* localStorage holds one string and anything can be in it — a stale value,
      hand-edited junk, or a huge blob from another app on the same origin.
      Decode defensively: only a plain non-negative integer counts, everything
-     else degrades to 0. The length guard runs first so a 10 kB blob is never
-     coerced. */
+     else degrades to 0. "Plain" is the digit test, not Number(): Number()
+     also accepts '0x10', '1e5', '0b11', '0o17', ' 9 ', '+5' and '5.0', and a
+     fabricated '1e5' best can never be beaten. The length guard runs first so
+     a 10 kB blob is never even matched against.
+     There is no !isFinite branch here because there is nothing for it to
+     catch: a string of at most 12 digits is at most 999999999999, which is
+     finite, an integer, and non-negative — so Infinity, fractions and
+     negatives are all already excluded by the two guards above. The range
+     guard still does work ('9999999' -> 0). */
   var BEST_KEY = 'snake-flee.best';
   var BEST_MAX = 1e6;
+  var DIGITS = /^[0-9]+$/;
 
   function decodeBest(raw) {
     if (typeof raw !== 'string' || raw.length === 0 || raw.length > 12) return 0;
+    if (!DIGITS.test(raw)) return 0;
     var n = Number(raw);
-    if (!isFinite(n) || Math.floor(n) !== n || n < 0 || n > BEST_MAX) return 0;
-    return n;
+    return n > BEST_MAX ? 0 : n;
   }
 
   function loadBest() {
