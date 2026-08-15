@@ -630,7 +630,11 @@
       } else {
         oTitle.textContent = 'paused';
         oLine.textContent = 'score ' + game.score + '  ·  best ' + best;
-        oHint.textContent = 'press p or space to resume';
+        // The keys are the only way back on a keyboard, and the button is the
+        // only way back on a touch screen — a tap on the board does not
+        // resume. This line used to name the keys to a reader who has none.
+        oHint.textContent = COARSE ? 'tap resume below to carry on'
+                                   : 'press p or space to resume';
       }
     }
 
