@@ -335,14 +335,26 @@
   // and a devicePixelRatio change at an unchanged CSS size.
   function layout() {
     var wrap = document.querySelector('.wrap');
+    var hud = document.querySelector('.hud');
+    var foot = document.querySelector('.foot');
     var cs = global.getComputedStyle(wrap);
     var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
     var padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-    var gaps = (parseFloat(cs.rowGap) || 0) * 2;
-    var chrome = document.querySelector('.hud').offsetHeight +
-                 document.querySelector('.foot').offsetHeight;
-    var availW = wrap.clientWidth - padX;
-    var availH = wrap.clientHeight - padY - chrome - gaps;
+    // The height comes from the viewport, never from the column: the column
+    // is min-height now, so it grows with the board, and measuring it would
+    // be the feedback loop this function exists to avoid.
+    var viewH = document.documentElement.clientHeight;
+    var row = cs.flexDirection === 'row';   // the landscape rule, read back
+    var availW, availH;
+    if (row) {
+      var colGaps = (parseFloat(cs.columnGap) || 0) * 2;
+      availW = wrap.clientWidth - padX - hud.offsetWidth - foot.offsetWidth - colGaps;
+      availH = viewH - padY;
+    } else {
+      var rowGaps = (parseFloat(cs.rowGap) || 0) * 2;
+      availW = wrap.clientWidth - padX;
+      availH = viewH - padY - hud.offsetHeight - foot.offsetHeight - rowGaps;
+    }
     var size = Math.max(160, Math.floor(Math.min(availW, availH)));
     var dpr = global.devicePixelRatio || 1;
     if (size !== lastSize || dpr !== lastDpr) {
