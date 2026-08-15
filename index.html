@@ -25,13 +25,19 @@
   <div class="board" id="board">
     <div class="stage" id="stage">
       <canvas id="canvas" width="480" height="480" aria-label="Snake board"></canvas>
-      <div class="overlay" id="overlay" hidden>
+      <!-- role=status so the state this shows (ready / paused / game over)
+           is announced when it appears, not only drawn. -->
+      <div class="overlay" id="overlay" role="status" hidden>
         <p class="over-title" id="overlayTitle">paused</p>
         <p class="over-line" id="overlayLine"></p>
         <p class="over-hint" id="overlayHint"></p>
       </div>
     </div>
   </div>
+
+  <!-- Score changes, a new best and resuming are announced here. One
+       utterance per meal at most: a tick-by-tick reading would be unusable. -->
+  <p class="sr-only" id="live" role="status" aria-live="polite"></p>
 
   <footer class="foot">
     <div class="controls">

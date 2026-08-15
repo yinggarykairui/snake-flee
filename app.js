@@ -409,17 +409,33 @@
     var oHint = document.getElementById('overlayHint');
     var pauseBtn = document.getElementById('pauseBtn');
     var bestSlot = document.getElementById('bestSlot');
+    var liveEl = document.getElementById('live');
     var shownState = '';
     var shownScore = -1;
     var shownBest = -1;
     var shownRecord = null;
     var beatThisRun = false;
+    var said = '';
+
+    // Anything worth saying goes through here, once. The overlay carries the
+    // ready / paused / game over states itself (role=status), so this region
+    // is left with the score, the record and coming back from a pause.
+    function say(msg) {
+      if (msg === said) return;
+      said = msg;
+      liveEl.textContent = msg;
+    }
 
     // The HUD is touched only when a number actually changes, not every frame.
     function syncHud() {
       if (game.score !== shownScore) {
+        var grew = game.score > shownScore;
         shownScore = game.score;
         scoreEl.textContent = String(game.score);
+        // shownRecord still holds the previous frame's flag here, so the
+        // record is named on the meal that takes it and not on every meal
+        // after it.
+        if (grew) say('score ' + game.score + (beatThisRun && !shownRecord ? ' · new best' : ''));
       }
       if (best !== shownBest) {
         shownBest = best;
@@ -483,6 +499,7 @@
     function syncChrome() {
       var state = game.over ? 'over' : (!started ? 'start' : (paused ? 'paused' : 'run'));
       if (state === shownState) return;
+      var prevState = shownState;
       shownState = state;
       pauseBtn.textContent = paused ? 'resume' : 'pause';
       /* togglePause() early-returns once the run is over, so leaving the
@@ -493,6 +510,7 @@
       if (state === 'run') {
         overlay.hidden = true;
         overlay.className = 'overlay';
+        if (prevState === 'paused') say('resumed');
         return;
       }
       overlay.hidden = false;

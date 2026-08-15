@@ -171,6 +171,16 @@ canvas {
 .btn:disabled:hover { background: transparent; }
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .hint {
   margin: 0;
   color: var(--muted);
@@ -215,5 +225,15 @@ canvas {
   }
   .scores { flex-direction: column; gap: 4px; }
   .foot { justify-content: center; max-width: 156px; }
-  .hint { text-align: left; }
+  .sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.hint { text-align: left; }
 }
