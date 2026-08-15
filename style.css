@@ -1,0 +1,87 @@
+/* Paper palette. Contrast is checked against the *adjacent* surface:
+   ink #23201c on paper #f4f0e8 = 13.5:1; ink on board #e8e2d6 = 11.8:1;
+   muted #5b544a on paper = 6.4:1; accent #a83c1b on board #e8e2d6 = 4.6:1
+   (the food mark needs >=3:1, body text >=4.5:1 — both clear). */
+:root {
+  --paper: #f4f0e8;
+  --board: #e8e2d6;
+  --line: #d6cebd;
+  --ink: #23201c;
+  --muted: #5b544a;
+  --accent: #a83c1b;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 16px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* The whole app is one non-scrolling column: HUD, square board, footer.
+   The board takes whatever vertical space is left over (see .board). */
+.wrap {
+  height: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hud {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.title-dim { color: var(--muted); font-weight: 400; }
+
+.scores {
+  display: flex;
+  gap: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.score { color: var(--muted); font-size: 13px; }
+.score b { color: var(--ink); font-size: 17px; font-weight: 600; margin-left: 2px; }
+
+.board {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  background: var(--board);
+  border-radius: var(--radius);
+}
+
+.foot { flex: 0 0 auto; }
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: center;
+}

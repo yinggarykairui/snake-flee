@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>snake, flee — the food runs away</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="hud">
+    <h1 class="title">snake<span class="title-dim">, flee</span></h1>
+    <div class="scores">
+      <span class="score"><span class="label">score</span> <b id="score">0</b></span>
+      <span class="score"><span class="label">best</span> <b id="best">0</b></span>
+    </div>
+  </header>
+
+  <div class="board" id="board">
+    <canvas id="canvas" width="480" height="480" aria-label="Snake board"></canvas>
+  </div>
+
+  <footer class="foot">
+    <p class="hint">arrows / wasd to steer &middot; p or space to pause &middot; r to restart</p>
+  </footer>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
