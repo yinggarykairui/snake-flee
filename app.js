@@ -383,26 +383,63 @@
     var oLine = document.getElementById('overlayLine');
     var oHint = document.getElementById('overlayHint');
     var pauseBtn = document.getElementById('pauseBtn');
+    var bestSlot = document.getElementById('bestSlot');
     var shownState = '';
+    var shownScore = -1;
+    var shownBest = -1;
+    var shownRecord = null;
+    var beatThisRun = false;
 
-    bestEl.textContent = String(best);
+    // The HUD is touched only when a number actually changes, not every frame.
+    function syncHud() {
+      if (game.score !== shownScore) {
+        shownScore = game.score;
+        scoreEl.textContent = String(game.score);
+      }
+      if (best !== shownBest) {
+        shownBest = best;
+        bestEl.textContent = String(best);
+      }
+      if (beatThisRun !== shownRecord) {
+        shownRecord = beatThisRun;
+        bestSlot.className = beatThisRun ? 'score is-record' : 'score';
+      }
+    }
 
     function restart() {
       reset(game);
       paused = false;
       acc = 0;
+      beatThisRun = false;
     }
 
     function togglePause() {
       if (!game.over) paused = !paused;
     }
 
-    function onGameOver() {
-      if (game.score > best) {
-        best = game.score;
-        saveBest(best);
-      }
+    /* `best` is a display copy and nothing more. Two tabs share one
+       localStorage key, so the copy this tab read at boot can be stale by the
+       time this tab writes: tab A dying at 99 after tab C loaded used to be
+       erased by tab C dying at 40. Re-read at the moment of writing and keep
+       the larger value; also follow the `storage` event so the HUD in the
+       other tab catches up without a reload. */
+    function commitBest(score) {
+      var stored = loadBest();
+      var next = score > stored ? score : stored;
+      if (next !== stored) saveBest(next);
+      if (next > best) best = next;
+      return next;
     }
+
+    function onGameOver() {
+      commitBest(game.score);
+    }
+
+    global.addEventListener('storage', function (e) {
+      if (e.key !== null && e.key !== BEST_KEY) return; // null = storage cleared
+      var v = loadBest();
+      if (v > best) best = v;
+    });
 
     function syncChrome() {
       var state = game.over ? 'over' : (paused ? 'paused' : 'run');
@@ -514,8 +551,15 @@
       } else {
         acc = 0;
       }
-      scoreEl.textContent = String(game.score);
-      bestEl.textContent = String(best);
+      /* The best on the HUD used to move only in onGameOver, so a record run
+         read `score 25 / best 3` until it ended. Past the old best the two
+         numbers are the same number, and the moment is marked on the label —
+         once, quietly, no banner. */
+      if (game.score > best) {
+        best = commitBest(game.score); // banked as it happens, not at death
+        beatThisRun = true;
+      }
+      syncHud();
       syncChrome();
       draw(game, l.size, l.dpr);
       global.requestAnimationFrame(frame);

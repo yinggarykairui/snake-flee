@@ -66,6 +66,9 @@ body {
   font-variant-numeric: tabular-nums;
 }
 .score { color: var(--muted); font-size: 13px; }
+/* The record mark: the label alone changes colour while the run is above the
+   stored best. Quiet on purpose — the number beside it is already the news. */
+.score.is-record .label { color: var(--accent); }
 .score b { color: var(--ink); font-size: 17px; font-weight: 600; margin-left: 2px; }
 
 /* Sized by JS from the space the HUD and footer leave over — the element
