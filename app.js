@@ -521,8 +521,10 @@
         oHint.textContent = COARSE ? 'tap the board to play again'
                                    : 'press r or tap the board to play again';
       } else if (state === 'start') {
-        oTitle.textContent = 'ready';
-        oLine.textContent = 'the food runs away from you';
+        // One line, at the foot of the board: the mechanic is already stated
+        // under the title, and the snake and the food should be visible.
+        oTitle.textContent = '';
+        oLine.textContent = '';
         oHint.textContent = COARSE ? 'swipe the board to start'
                                    : 'press an arrow key to start';
       } else {

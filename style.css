@@ -126,7 +126,10 @@ canvas {
 /* The start gate does not veil the board at all — the board is the thing being
    introduced. The prompt rides on its own paper plates instead, so the text
    keeps its contrast and the grid behind it keeps all of its. */
-.overlay.is-start { background: transparent; }
+.overlay.is-start {
+  background: transparent;
+  justify-content: flex-end;   /* out of the middle, where the snake is */
+}
 .overlay.is-start > p {
   background: var(--paper);
   border-radius: 6px;
