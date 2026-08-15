@@ -79,7 +79,14 @@ canvas {
   touch-action: none; /* swipes steer, they must not scroll or zoom */
 }
 
-.stage { position: relative; line-height: 0; }
+.stage {
+  position: relative;
+  line-height: 0;
+  touch-action: none;         /* the stage owns swipes; the page must not scroll */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
 
 /* Overlay sits on the board, never outside it, so nothing overlaps the HUD. */
 .overlay {

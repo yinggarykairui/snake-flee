@@ -394,6 +394,56 @@
     pauseBtn.addEventListener('click', togglePause);
     document.getElementById('restartBtn').addEventListener('click', restart);
 
+    /* Touch steering is bound to the stage only — never to the document — so
+       pressing the HUD, the hint or a button can never move the snake.
+       A short press is a tap (restart after game over); anything past the
+       swipe threshold steers along its dominant axis. */
+    var SWIPE_MIN = 24;   // px of travel before a drag counts as a swipe
+    var TAP_MAX = 12;     // px of travel still counted as a tap
+    var stage = document.getElementById('stage');
+    var touchId = null;
+    var startX = 0, startY = 0;
+
+    stage.addEventListener('touchstart', function (e) {
+      if (touchId !== null) return;
+      var t = e.changedTouches[0];
+      touchId = t.identifier;
+      startX = t.clientX;
+      startY = t.clientY;
+      e.preventDefault();
+    }, { passive: false });
+
+    stage.addEventListener('touchmove', function (e) {
+      e.preventDefault(); // keep the page from scrolling under the swipe
+    }, { passive: false });
+
+    function endTouch(e) {
+      var t = null;
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === touchId) t = e.changedTouches[i];
+      }
+      if (!t) return;
+      touchId = null;
+      var dx = t.clientX - startX;
+      var dy = t.clientY - startY;
+      var adx = Math.abs(dx), ady = Math.abs(dy);
+      if (Math.max(adx, ady) >= SWIPE_MIN) {
+        if (adx > ady) turn(game, dx > 0 ? DIRS.right : DIRS.left);
+        else turn(game, dy > 0 ? DIRS.down : DIRS.up);
+      } else if (Math.max(adx, ady) <= TAP_MAX && game.over) {
+        restart();
+      }
+      e.preventDefault();
+    }
+    stage.addEventListener('touchend', endTouch, { passive: false });
+    stage.addEventListener('touchcancel', function () { touchId = null; });
+
+    // Coming back from a background tab: drop whatever time passed instead of
+    // replaying it as a burst of steps.
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) { prev = 0; acc = 0; }
+    });
+
     function frame(now) {
       var l = layout();
       // A backgrounded tab hands back one enormous dt; never replay it.
