@@ -495,8 +495,11 @@
        pressing the HUD, the hint or a button can never move the snake.
        A short press is a tap (restart after game over); anything past the
        swipe threshold steers along its dominant axis. */
+    /* One threshold, not two. TAP_MAX used to be 12 against a SWIPE_MIN of
+       24, and a game-over tap that drifted 13-23 px — which a thumb on glass
+       does routinely — was neither a tap nor a swipe and produced nothing at
+       all. Anything short of a swipe is a tap. */
     var SWIPE_MIN = 24;   // px of travel before a drag counts as a swipe
-    var TAP_MAX = 12;     // px of travel still counted as a tap
     var stage = document.getElementById('stage');
     var touchId = null;
     var startX = 0, startY = 0;
@@ -527,7 +530,7 @@
       if (Math.max(adx, ady) >= SWIPE_MIN) {
         if (adx > ady) turn(game, dx > 0 ? DIRS.right : DIRS.left);
         else turn(game, dy > 0 ? DIRS.down : DIRS.up);
-      } else if (Math.max(adx, ady) <= TAP_MAX && game.over) {
+      } else if (game.over) {
         restart();
       }
       e.preventDefault();
