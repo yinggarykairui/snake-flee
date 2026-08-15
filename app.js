@@ -336,11 +336,26 @@
   }
 
   // ------------------------------------------------------------ input + loop
-  var KEYMAP = {
-    ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
-    w: 'up', a: 'left', s: 'down', d: 'right',
-    W: 'up', A: 'left', S: 'down', D: 'right'
-  };
+  /* Null-prototype table, so '__proto__', 'constructor' and 'toString' are
+     ordinary misses rather than inherited truthy values that would get
+     preventDefault()ed. keyDir() is the only reader; it is exported so the
+     mapping can be asserted without a DOM. */
+  var KEYMAP = Object.create(null);
+  KEYMAP.ArrowUp = 'up'; KEYMAP.ArrowDown = 'down';
+  KEYMAP.ArrowLeft = 'left'; KEYMAP.ArrowRight = 'right';
+  KEYMAP.w = 'up'; KEYMAP.a = 'left'; KEYMAP.s = 'down'; KEYMAP.d = 'right';
+  KEYMAP.W = 'up'; KEYMAP.A = 'left'; KEYMAP.S = 'down'; KEYMAP.D = 'right';
+
+  function keyDir(k) {
+    return typeof k === 'string' && KEYMAP[k] ? KEYMAP[k] : null;
+  }
+
+  /* A keydown carrying ctrl/meta/alt belongs to the browser or the OS, never
+     to the snake: Ctrl+R must reload, Ctrl+S must save, Ctrl+P must print.
+     Shift is not a modifier we claim — Shift+Arrow still steers. */
+  function isBareKey(e) {
+    return !e.ctrlKey && !e.metaKey && !e.altKey;
+  }
 
   function boot() {
     var game = createGame({});
@@ -398,7 +413,8 @@
     }
 
     function onKey(e) {
-      var name = KEYMAP[e.key];
+      if (!isBareKey(e)) return;
+      var name = keyDir(e.key);
       if (name) {
         e.preventDefault();
         turn(game, DIRS[name]);
@@ -502,6 +518,7 @@
     BASE_MS: BASE_MS, RAMP_MS_PER_POINT: RAMP_MS_PER_POINT, FLOOR_MS: FLOOR_MS,
     FEAR_RADIUS: FEAR_RADIUS, FOOD_STEP_EVERY: FOOD_STEP_EVERY,
     wrap: wrap, key: key, stepIntervalMs: stepIntervalMs, isOpposite: isOpposite,
+    keyDir: keyDir, isBareKey: isBareKey,
     torusDelta: torusDelta, torusDist2: torusDist2, fleeStep: fleeStep,
     occupiedSet: occupiedSet,
     BEST_KEY: BEST_KEY, decodeBest: decodeBest, loadBest: loadBest, saveBest: saveBest,
