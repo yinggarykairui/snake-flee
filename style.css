@@ -1,11 +1,12 @@
-/* Paper palette. Contrast is checked against the *adjacent* surface:
-   ink #23201c on paper #f4f0e8 = 13.5:1; ink on board #e8e2d6 = 11.8:1;
-   muted #5b544a on paper = 6.4:1; accent #a83c1b on board #e8e2d6 = 4.6:1
-   (the food mark needs >=3:1, body text >=4.5:1 — both clear). */
+/* Paper palette. Contrast measured against the *adjacent* surface:
+   ink #23201c on paper = 14.3:1, on the board = 12.6:1; snake head on the
+   board = 9.2:1; muted text on paper = 6.6:1; the accent food mark on the
+   board = 4.9:1 (needs 3:1). --line and --frame are decorative rules only. */
 :root {
   --paper: #f4f0e8;
   --board: #e8e2d6;
   --line: #d6cebd;
+  --frame: #cdc3ae;
   --ink: #23201c;
   --muted: #5b544a;
   --accent: #a83c1b;
@@ -35,6 +36,7 @@ body {
   padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 10px;
 }
 
@@ -62,9 +64,10 @@ body {
 .score { color: var(--muted); font-size: 13px; }
 .score b { color: var(--ink); font-size: 17px; font-weight: 600; margin-left: 2px; }
 
+/* Sized by JS from the space the HUD and footer leave over — the element
+   itself must not grow, or measuring it would feed back into the size. */
 .board {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
   display: grid;
   place-items: center;
 }
@@ -82,6 +85,10 @@ canvas {
 .stage {
   position: relative;
   line-height: 0;
+  border-radius: var(--radius);
+  /* Hairline frame: keeps the board readable as an object even when the
+     overlay covers it. Shadow, not border, so it costs no layout box. */
+  box-shadow: 0 0 0 1px var(--frame);
   touch-action: none;         /* the stage owns swipes; the page must not scroll */
   -webkit-user-select: none;
   user-select: none;

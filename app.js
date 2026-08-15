@@ -296,10 +296,21 @@
   var lastSize = 0;
   var lastDpr = 0;
 
+  // Measured from the column and the two fixed rows, never from the board
+  // itself: the board's height comes from the canvas, so measuring it would
+  // be a feedback loop. Runs every frame, which also covers window resizes
+  // and a devicePixelRatio change at an unchanged CSS size.
   function layout() {
-    var host = document.getElementById('board');
-    var rect = host.getBoundingClientRect();
-    var size = Math.max(160, Math.floor(Math.min(rect.width, rect.height)));
+    var wrap = document.querySelector('.wrap');
+    var cs = global.getComputedStyle(wrap);
+    var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    var padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    var gaps = (parseFloat(cs.rowGap) || 0) * 2;
+    var chrome = document.querySelector('.hud').offsetHeight +
+                 document.querySelector('.foot').offsetHeight;
+    var availW = wrap.clientWidth - padX;
+    var availH = wrap.clientHeight - padY - chrome - gaps;
+    var size = Math.max(160, Math.floor(Math.min(availW, availH)));
     var dpr = global.devicePixelRatio || 1;
     if (size !== lastSize || dpr !== lastDpr) {
       lastSize = size;
@@ -468,6 +479,9 @@
       draw(game, l.size, l.dpr);
       global.requestAnimationFrame(frame);
     }
+    // Live state on the export, so the running game can be inspected from the
+    // browser console (and by the headless smoke check) without a debugger.
+    global.SnakeFlee.game = game;
     global.requestAnimationFrame(frame);
   }
 
