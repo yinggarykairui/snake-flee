@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>snake, flee — tests</title>
+<link rel="icon" href="data:,"><!-- no favicon file; this stops the 404 -->
+<link rel="stylesheet" href="style.css">
+<style>
+  /* Runner-only styling; the game's palette is reused for consistency. */
+  .runner { max-width: 720px; margin: 0 auto; padding: 24px 16px; height: auto; }
+  .summary { font-size: 20px; font-weight: 600; margin: 0 0 16px; }
+  .summary.ok { color: #2f5d33; }      /* 5.6:1 on the paper background */
+  .summary.bad { color: var(--accent); }
+  ol { margin: 0; padding-left: 22px; font-size: 14px; }
+  li { margin: 2px 0; }
+  li.fail { color: var(--accent); font-weight: 600; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+</style>
+</head>
+<body>
+<div class="runner">
+  <h1 style="font-size:17px;margin:0 0 12px">snake, flee — assertions</h1>
+  <p class="summary" id="summary">running…</p>
+  <ol id="results"></ol>
+</div>
+
+<!-- app.js only boots the game when the page has a #canvas, so loading it
+     here gives us the pure logic and nothing else. -->
+<script src="app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var S = window.SnakeFlee;
+  var pass = 0, fail = 0;
+  var list = document.getElementById('results');
+
+  function ok(name, cond, detail) {
+    var li = document.createElement('li');
+    if (cond) { pass++; li.textContent = 'PASS  ' + name; }
+    else { fail++; li.className = 'fail'; li.textContent = 'FAIL  ' + name + (detail ? ' — ' + detail : ''); }
+    list.appendChild(li);
+  }
+  function eq(name, actual, expected) {
+    ok(name, actual === expected, 'got ' + JSON.stringify(actual) + ', expected ' + JSON.stringify(expected));
+  }
+  var N = 20;
+  function occ(cells) {
+    var m = Object.create(null);
+    for (var i = 0; i < cells.length; i++) m[S.key(cells[i][0], cells[i][1])] = true;
+    return m;
+  }
+
+  // ---------------------------------------------------------------- wrapping
+  eq('wrap(-1, 20) = 19', S.wrap(-1, 20), 19);
+  eq('wrap(20, 20) = 0', S.wrap(20, 20), 0);
+  eq('wrap(25, 20) = 5', S.wrap(25, 20), 5);
+  eq('wrap(0, 20) = 0', S.wrap(0, 20), 0);
+
+  // ---------------------------------------------------------- torus distance
+  eq('torusDelta(1, 19, 20) = 2 (across the seam)', S.torusDelta(1, 19, 20), 2);
+  eq('torusDelta(19, 1, 20) = -2', S.torusDelta(19, 1, 20), -2);
+  eq('torusDelta(5, 3, 20) = 2 (no wrap)', S.torusDelta(5, 3, 20), 2);
+  eq('torusDelta(0, 10, 20) = 10 (antipodal)', S.torusDelta(0, 10, 20), 10);
+  eq('torusDist2 corner-to-corner (0,0)-(19,19) = 2', S.torusDist2(0, 0, 19, 19, N, N), 2);
+  eq('torusDist2 is not the naive |dx| answer (722)', S.torusDist2(0, 0, 19, 19, N, N) !== 722, true);
+  eq('torusDist2 symmetric', S.torusDist2(3, 17, 18, 2, N, N), S.torusDist2(18, 2, 3, 17, N, N));
+
+  // --------------------------------------------------------------- flee step
+  (function () {
+    var far = S.fleeStep({ x: 0, y: 0 }, { x: 10, y: 10 }, {}, N, N, 5);
+    ok('sits still outside the fear radius', far.x === 0 && far.y === 0, JSON.stringify(far));
+
+    var near = S.fleeStep({ x: 8, y: 5 }, { x: 10, y: 5 }, {}, N, N, 5);
+    ok('flees straight away from the head', near.x === 7 && near.y === 5, JSON.stringify(near));
+
+    // Head at x=2, food at x=0: the short way round is through the seam, so
+    // the food must exit left to x=19, not right into the snake.
+    var seam = S.fleeStep({ x: 0, y: 5 }, { x: 2, y: 5 }, {}, N, N, 5);
+    ok('flees across the wrap seam, not into the head', seam.x === 19 && seam.y === 5, JSON.stringify(seam));
+
+    // Straight-line escape blocked by the snake body -> sidesteps, and the
+    // tiebreak order (right, left, down, up) picks "down".
+    var blocked = S.fleeStep({ x: 5, y: 5 }, { x: 7, y: 5 }, occ([[4, 5]]), N, N, 5);
+    ok('refuses a snake cell and sidesteps', blocked.x === 5 && blocked.y === 6, JSON.stringify(blocked));
+
+    // Fully boxed in: stays put rather than moving closer.
+    var boxed = S.fleeStep({ x: 5, y: 5 }, { x: 6, y: 5 }, occ([[4, 5], [5, 4], [5, 6], [6, 5]]), N, N, 5);
+    ok('boxed-in food holds its ground', boxed.x === 5 && boxed.y === 5, JSON.stringify(boxed));
+
+    var diag = S.fleeStep({ x: 5, y: 5 }, { x: 7, y: 7 }, {}, N, N, 5);
+    ok('diagonal tie breaks horizontally (left)', diag.x === 4 && diag.y === 5, JSON.stringify(diag));
+
+    eq('radius boundary: distance 5 still scares it',
+      S.fleeStep({ x: 5, y: 5 }, { x: 10, y: 5 }, {}, N, N, 5).x, 4);
+    eq('radius boundary: distance 6 does not',
+      S.fleeStep({ x: 5, y: 5 }, { x: 11, y: 5 }, {}, N, N, 5).x, 5);
+  })();
+
+  // Exhaustive property sweep: for every head/food pair on the board the flee
+  // step must stay on the grid, avoid occupied cells, never close the gap, and
+  // never move at all when the head is outside the radius.
+  (function () {
+    var bad = { grid: 0, occupied: 0, closer: 0, restless: 0 };
+    var block = occ([[9, 9], [9, 10], [10, 9], [3, 14], [17, 2]]);
+    for (var hx = 0; hx < N; hx++) {
+      for (var hy = 0; hy < N; hy++) {
+        for (var fx = 0; fx < N; fx++) {
+          for (var fy = 0; fy < N; fy++) {
+            if (block[S.key(fx, fy)]) continue;
+            var before = S.torusDist2(fx, fy, hx, hy, N, N);
+            var r = S.fleeStep({ x: fx, y: fy }, { x: hx, y: hy }, block, N, N, 5);
+            if (r.x < 0 || r.x >= N || r.y < 0 || r.y >= N || r.x % 1 || r.y % 1) bad.grid++;
+            if (block[S.key(r.x, r.y)]) bad.occupied++;
+            if (S.torusDist2(r.x, r.y, hx, hy, N, N) < before) bad.closer++;
+            if (before > 25 && (r.x !== fx || r.y !== fy)) bad.restless++;
+          }
+        }
+      }
+    }
+    eq('sweep: always lands on the grid', bad.grid, 0);
+    eq('sweep: never lands on an occupied cell', bad.occupied, 0);
+    eq('sweep: torus distance is non-decreasing', bad.closer, 0);
+    eq('sweep: motionless outside the fear radius', bad.restless, 0);
+  })();
+
+  // -------------------------------------------------------------- speed ramp
+  eq('ramp: 165 ms/step at score 0', S.stepIntervalMs(0), 165);
+  eq('ramp: -4 ms per point', S.stepIntervalMs(1), 161);
+  eq('ramp: 85 ms at score 20', S.stepIntervalMs(20), 85);
+  eq('ramp: 81 ms at score 21', S.stepIntervalMs(21), 81);
+  eq('ramp: floor of 80 ms reached at score 22', S.stepIntervalMs(22), 80);
+  eq('ramp: never below the floor', S.stepIntervalMs(10000), 80);
+  (function () {
+    var monotone = true;
+    for (var i = 1; i <= 200; i++) {
+      if (S.stepIntervalMs(i) > S.stepIntervalMs(i - 1)) monotone = false;
+    }
+    ok('ramp: monotonically non-increasing', monotone);
+  })();
+
+  // ------------------------------------------------------------ game stepping
+  (function () {
+    var g = S.createGame({ rng: function () { return 0.5; } });
+    eq('fresh game: score 0', g.score, 0);
+    eq('fresh game: 3 segments', g.snake.length, 3);
+
+    // Park the food directly ahead so the next step eats it.
+    g.food = { x: g.snake[0].x + 1, y: g.snake[0].y };
+    var len = g.snake.length;
+    eq('eating reports "eat"', S.tick(g), 'eat');
+    eq('eating adds exactly one point', g.score, 1);
+    eq('eating grows by exactly one segment', g.snake.length, len + 1);
+    var len2 = g.snake.length;
+    g.food = { x: 0, y: 0 };            // far away, no second meal
+    S.tick(g);
+    eq('length is stable after the growth step', g.snake.length, len2);
+  })();
+
+  (function () {
+    var g = S.createGame({ rng: function () { return 0; } });
+    g.snake = [{ x: 19, y: 4 }, { x: 18, y: 4 }, { x: 17, y: 4 }];
+    g.dir = S.DIRS.right; g.dirMoved = S.DIRS.right;
+    g.food = { x: 10, y: 15 };
+    S.tick(g);
+    ok('snake wraps off the right edge to column 0', g.snake[0].x === 0 && g.snake[0].y === 4,
+      JSON.stringify(g.snake[0]));
+
+    g.snake = [{ x: 6, y: 0 }, { x: 6, y: 1 }, { x: 6, y: 2 }];
+    g.dir = S.DIRS.up; g.dirMoved = S.DIRS.up;
+    S.tick(g);
+    ok('snake wraps off the top edge to the last row', g.snake[0].x === 6 && g.snake[0].y === 19,
+      JSON.stringify(g.snake[0]));
+  })();
+
+  (function () {
+    // Self-collision: a length-5 snake turned into its own body.
+    var g = S.createGame({ rng: function () { return 0; } });
+    g.snake = [{ x: 5, y: 5 }, { x: 6, y: 5 }, { x: 6, y: 6 }, { x: 5, y: 6 }, { x: 4, y: 6 }];
+    g.dir = S.DIRS.down; g.dirMoved = S.DIRS.left;
+    g.food = { x: 15, y: 15 };
+    eq('running into the body ends the run', S.tick(g), 'dead');
+    eq('a dead game stays dead', S.tick(g), 'dead');
+
+    S.reset(g);
+    eq('reset clears the score', g.score, 0);
+    eq('reset restores the starting length', g.snake.length, 3);
+    eq('reset restores the starting speed', S.stepIntervalMs(g.score), 165);
+    eq('reset revives the game', g.over, false);
+  })();
+
+  (function () {
+    // A 180 is judged against the direction last *moved*. Moving right, the
+    // pair (up, left) in one tick must leave "up" queued, not "left".
+    var g = S.createGame({ rng: function () { return 0; } });
+    g.food = { x: 0, y: 0 };
+    eq('reversal straight into the neck is refused', S.turn(g, S.DIRS.left), false);
+    eq('a legal turn is accepted', S.turn(g, S.DIRS.up), true);
+    eq('the follow-up reversal is still judged against the last move',
+      S.turn(g, S.DIRS.left), false);
+    ok('the refused reversal is not fatal', S.tick(g) !== 'dead');
+    eq('the queued turn is the one that happened', g.dirMoved, S.DIRS.up);
+    eq('after moving up, left is now legal', S.turn(g, S.DIRS.left), true);
+  })();
+
+  (function () {
+    // Mash every direction 500 times from a fresh game: nothing may throw and
+    // the snake may never reverse into itself on the very next step.
+    var g = S.createGame({ rng: Math.random });
+    var dirs = [S.DIRS.up, S.DIRS.down, S.DIRS.left, S.DIRS.right];
+    var threw = false, reversed = false;
+    try {
+      for (var i = 0; i < 500; i++) {
+        var moved = g.dirMoved;
+        S.turn(g, dirs[i % 4]);
+        S.turn(g, dirs[(i * 7 + 3) % 4]);
+        if (S.isOpposite(g.dir, moved)) reversed = true;
+        if (S.tick(g) === 'dead') S.reset(g);
+      }
+    } catch (e) { threw = true; }
+    ok('key mashing never throws', !threw);
+    ok('key mashing never queues a reversal', !reversed);
+  })();
+
+  // ----------------------------------------------------------- best storage
+  eq('decode "NaN" -> 0', S.decodeBest('NaN'), 0);
+  eq('decode "{}" -> 0', S.decodeBest('{}'), 0);
+  eq('decode "-5" -> 0', S.decodeBest('-5'), 0);
+  eq('decode "3.5" -> 0', S.decodeBest('3.5'), 0);
+  eq('decode "" -> 0', S.decodeBest(''), 0);
+  eq('decode null (nothing stored) -> 0', S.decodeBest(null), 0);
+  eq('decode a 10 kB blob -> 0', S.decodeBest(new Array(10241).join('9')), 0);
+  eq('decode "Infinity" -> 0', S.decodeBest('Infinity'), 0);
+  eq('decode a legitimate "42" -> 42', S.decodeBest('42'), 42);
+  eq('decode "0" -> 0', S.decodeBest('0'), 0);
+
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem(S.BEST_KEY); } catch (e) {}
+    try {
+      localStorage.setItem(S.BEST_KEY, '{"best":7}');
+      eq('a garbage stored value loads as 0', S.loadBest(), 0);
+      localStorage.setItem(S.BEST_KEY, '137');
+      eq('a legitimate stored value still loads', S.loadBest(), 137);
+      S.saveBest(58);
+      eq('saved best round-trips', S.loadBest(), 58);
+      if (stored === null) localStorage.removeItem(S.BEST_KEY);
+      else localStorage.setItem(S.BEST_KEY, stored);
+    } catch (e) {
+      ok('localStorage round-trip', false, 'storage unavailable: ' + e);
+    }
+  })();
+
+  var summary = document.getElementById('summary');
+  summary.textContent = pass + ' passed, ' + fail + ' failed';
+  summary.className = 'summary ' + (fail === 0 ? 'ok' : 'bad');
+  document.title = (fail === 0 ? 'PASS' : 'FAIL') + ' — ' + pass + '/' + (pass + fail);
+  window.__testResults = { pass: pass, fail: fail };
+})();
+</script>
+</body>
+</html>
