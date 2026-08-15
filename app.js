@@ -23,6 +23,11 @@
   var RAMP_MS_PER_POINT = 4;
   var FLOOR_MS = 80;
 
+  // Food panics when the head is within 5 cells (straight-line distance on the
+  // torus). Small enough that the food sits still most of the time, so an
+  // escape reads as a reaction to the snake rather than a random walk.
+  var FEAR_RADIUS = 5;
+
   // Palette duplicated from style.css: canvas cannot read CSS custom
   // properties cheaply per frame, and these two must stay in step.
   var C_BOARD = '#e8e2d6';
@@ -60,6 +65,57 @@
     var s = Object.create(null);
     for (var i = 0; i < snake.length; i++) s[key(snake[i].x, snake[i].y)] = true;
     return s;
+  }
+
+  // Shortest signed separation on a wrapped axis: on a 20-wide board, column 1
+  // is 2 away from column 19, not 18. Everything about the chase depends on
+  // this — naive |dx| makes the food flee *towards* the snake near an edge.
+  function torusDelta(a, b, n) {
+    var d = wrap(a - b, n);
+    return d > n / 2 ? d - n : d;
+  }
+
+  // Squared straight-line distance on the torus. Squared (not sqrt) so the
+  // comparisons stay in exact integer arithmetic.
+  function torusDist2(ax, ay, bx, by, cols, rows) {
+    var dx = torusDelta(ax, bx, cols);
+    var dy = torusDelta(ay, by, rows);
+    return dx * dx + dy * dy;
+  }
+
+  /* One flee step for the food.
+       - outside the fear radius it sits still;
+       - inside, it considers its four wrapped neighbours, drops any cell that
+         the snake occupies, and takes the one that increases torus distance
+         the most. Because (a+1)^2 - a^2 grows with a, "most" is automatically
+         the axis it is already further away on.
+       - only strictly-increasing moves are taken, so distance to the head is
+         non-decreasing on every step and a boxed-in food holds its ground
+         instead of twitching.
+       - tiebreak (equal gain, e.g. a perfect diagonal): fixed order
+         right, left, down, up — horizontal wins, and the whole chase stays
+         deterministic and reproducible in tests.
+     `occupied` is a map of "x,y" -> true. Returns a new {x, y}. */
+  var FLEE_ORDER = [DIRS.right, DIRS.left, DIRS.down, DIRS.up];
+
+  function fleeStep(food, head, occupied, cols, rows, fearRadius) {
+    var r = fearRadius === undefined ? FEAR_RADIUS : fearRadius;
+    var here = torusDist2(food.x, food.y, head.x, head.y, cols, rows);
+    if (here > r * r) return { x: food.x, y: food.y };
+
+    var best = { x: food.x, y: food.y };
+    var bestD = here;
+    for (var i = 0; i < FLEE_ORDER.length; i++) {
+      var nx = wrap(food.x + FLEE_ORDER[i].x, cols);
+      var ny = wrap(food.y + FLEE_ORDER[i].y, rows);
+      if (occupied && occupied[key(nx, ny)]) continue;
+      var d = torusDist2(nx, ny, head.x, head.y, cols, rows);
+      if (d > bestD) {
+        bestD = d;
+        best = { x: nx, y: ny };
+      }
+    }
+    return best;
   }
 
   // ------------------------------------------------------------ game object
@@ -148,6 +204,9 @@
       g.food = spawnFood(g);
       return 'eat';
     }
+
+    // Food reacts after the snake has moved, so it flees the head's new cell.
+    g.food = fleeStep(g.food, g.snake[0], occupiedSet(g.snake), g.cols, g.rows, FEAR_RADIUS);
     return 'move';
   }
 
@@ -284,7 +343,10 @@
   global.SnakeFlee = {
     COLS: COLS, ROWS: ROWS, DIRS: DIRS,
     BASE_MS: BASE_MS, RAMP_MS_PER_POINT: RAMP_MS_PER_POINT, FLOOR_MS: FLOOR_MS,
+    FEAR_RADIUS: FEAR_RADIUS,
     wrap: wrap, key: key, stepIntervalMs: stepIntervalMs, isOpposite: isOpposite,
+    torusDelta: torusDelta, torusDist2: torusDist2, fleeStep: fleeStep,
+    occupiedSet: occupiedSet,
     createGame: createGame, reset: reset, turn: turn, tick: tick, spawnFood: spawnFood
   };
 
