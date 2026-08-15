@@ -534,6 +534,13 @@
     }
     global.addEventListener('keydown', onKey);
 
+    /* The footer hint used to name keys and nothing else, on a phone that has
+       none of them: swipe steering was documented nowhere and tap-to-restart
+       only appeared in the overlay after the run was already lost. */
+    document.querySelector('.hint').textContent = COARSE
+      ? 'swipe the board to steer · tap it to start or play again'
+      : 'arrows / wasd to steer · p or space to pause · r to restart';
+
     pauseBtn.addEventListener('click', togglePause);
     document.getElementById('restartBtn').addEventListener('click', restart);
 
