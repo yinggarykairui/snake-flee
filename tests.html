@@ -63,7 +63,10 @@
   eq('torusDelta(5, 3, 20) = 2 (no wrap)', S.torusDelta(5, 3, 20), 2);
   eq('torusDelta(0, 10, 20) = 10 (antipodal)', S.torusDelta(0, 10, 20), 10);
   eq('torusDist2 corner-to-corner (0,0)-(19,19) = 2', S.torusDist2(0, 0, 19, 19, N, N), 2);
-  eq('torusDist2 is not the naive |dx| answer (722)', S.torusDist2(0, 0, 19, 19, N, N) !== 722, true);
+  // (the naive, unwrapped answer for that pair would be 722; the row above is
+  //  the whole assertion — a follow-up '!== 722' would only restate it)
+  eq('torusDist2 antipodal on both axes (0,0)-(10,10) = 200', S.torusDist2(0, 0, 10, 10, N, N), 200);
+  eq('torusDist2 one step across the seam (0,0)-(19,0) = 1', S.torusDist2(0, 0, 19, 0, N, N), 1);
   eq('torusDist2 symmetric', S.torusDist2(3, 17, 18, 2, N, N), S.torusDist2(18, 2, 3, 17, N, N));
 
   // --------------------------------------------------------------- flee step
@@ -91,10 +94,73 @@
     var diag = S.fleeStep({ x: 5, y: 5 }, { x: 7, y: 7 }, {}, N, N, 5);
     ok('diagonal tie breaks horizontally (left)', diag.x === 4 && diag.y === 5, JSON.stringify(diag));
 
-    eq('radius boundary: distance 5 still scares it',
+    eq('radius boundary, explicit argument: distance 5 still scares it',
       S.fleeStep({ x: 5, y: 5 }, { x: 10, y: 5 }, {}, N, N, 5).x, 4);
-    eq('radius boundary: distance 6 does not',
+    eq('radius boundary, explicit argument: distance 6 does not',
       S.fleeStep({ x: 5, y: 5 }, { x: 11, y: 5 }, {}, N, N, 5).x, 5);
+
+    /* Every call above passes the radius explicitly, which exercises the
+       parameter and never the constant the game actually ships. These three
+       pin the shipped value and take the default-argument path — no sixth
+       argument — so a change to FEAR_RADIUS is a failing test. */
+    eq('the shipped fear radius is 5 cells', S.FEAR_RADIUS, 5);
+    eq('default radius: distance 5 scares it',
+      S.fleeStep({ x: 5, y: 5 }, { x: 10, y: 5 }, {}, N, N).x, 4);
+    eq('default radius: distance 6 does not',
+      S.fleeStep({ x: 5, y: 5 }, { x: 11, y: 5 }, {}, N, N).x, 5);
+  })();
+
+  // ------------------------------------------------------- food placement
+  (function () {
+    /* spawnFood's occupancy filter was untested: the game tests all inject an
+       rng that lands on a free cell either way. Leave exactly one cell open
+       and the filter is the only thing that can find it. */
+    var g = S.createGame({ rng: function () { return 0; } });
+    g.snake = [];
+    for (var y = 0; y < N; y++) {
+      for (var x = 0; x < N; x++) if (!(x === 7 && y === 3)) g.snake.push({ x: x, y: y });
+    }
+    var only = S.spawnFood(g);
+    ok('food spawns in the one free cell, not on the snake',
+      only.x === 7 && only.y === 3, JSON.stringify(only));
+
+    // ...and across the whole rng range, with a body worth avoiding.
+    var g2 = S.createGame({ rng: function () { return 0; } });
+    g2.snake = [];
+    for (var i = 0; i < N; i++) g2.snake.push({ x: i, y: 0 });   // the whole top row
+    var taken = S.occupiedSet(g2.snake);
+    var inside = 0, draws = 0;
+    for (var k = 0; k <= 40; k++) {
+      g2.rng = (function (v) { return function () { return v; }; })(k / 40.0001);
+      var f = S.spawnFood(g2);
+      draws++;
+      if (taken[S.key(f.x, f.y)]) inside++;
+    }
+    eq('41 rng draws, none of them inside the snake', inside, 0);
+    eq('...and all 41 draws actually happened', draws, 41);
+
+    eq('occupiedSet marks the head cell too', S.occupiedSet([{ x: 1, y: 2 }, { x: 3, y: 4 }])[S.key(1, 2)], true);
+    eq('occupiedSet marks the tail cell too', S.occupiedSet([{ x: 1, y: 2 }, { x: 3, y: 4 }])[S.key(3, 4)], true);
+  })();
+
+  // --------------------------------------------------- the vacating tail
+  (function () {
+    /* The tail cell frees up on the same step, so the head may follow it —
+       unless the snake is growing this step, when the tail stays put and the
+       same move is fatal. One guard, both outcomes. */
+    function square(grow) {
+      var g = S.createGame({ rng: function () { return 0; } });
+      g.snake = [{ x: 5, y: 5 }, { x: 6, y: 5 }, { x: 6, y: 6 }, { x: 5, y: 6 }];
+      g.dir = S.DIRS.down; g.dirMoved = S.DIRS.right;   // into the tail cell
+      g.grow = grow; g.food = { x: 15, y: 15 }; g.clock = 0;
+      return { r: S.tick(g), g: g };
+    }
+    var moving = square(0);
+    eq('head into the cell the tail is vacating is a move', moving.r, 'move');
+    eq('...and the run continues', moving.g.over, false);
+    var growing = square(1);
+    eq('the same move while growing is death', growing.r, 'dead');
+    eq('...and the game is marked over', growing.g.over, true);
   })();
 
   // Exhaustive property sweep: for every head/food pair on the board the flee
@@ -124,6 +190,23 @@
     eq('sweep: motionless outside the fear radius', bad.restless, 0);
   })();
 
+  // ------------------------------------------------------------- reversals
+  (function () {
+    eq('right is opposite left', S.isOpposite(S.DIRS.right, S.DIRS.left), true);
+    eq('up is opposite down', S.isOpposite(S.DIRS.up, S.DIRS.down), true);
+    // One axis matching is not enough: 0 === -0, so every direction has one
+    // component that looks reversed against itself.
+    eq('down is not opposite itself', S.isOpposite(S.DIRS.down, S.DIRS.down), false);
+    eq('left is not opposite itself', S.isOpposite(S.DIRS.left, S.DIRS.left), false);
+    eq('right is not opposite up', S.isOpposite(S.DIRS.right, S.DIRS.up), false);
+    (function () {
+      var g = S.createGame({ rng: function () { return 0; } });
+      g.food = { x: 0, y: 0 };
+      eq('pressing the direction you are already going is legal',
+        S.turn(g, S.DIRS.right), true);
+    })();
+  })();
+
   // ------------------------------------------------------------ flee cadence
   (function () {
     // The food moves once per two snake steps. At equal speed a head-on chase
@@ -142,6 +225,38 @@
     S.tick(g);
     eq('the chase closes: gap is now 1', S.torusDist2(g.food.x, g.food.y, g.snake[0].x, g.snake[0].y, N, N), 1);
     eq('a fleeing food can in fact be caught', S.tick(g), 'eat');
+  })();
+
+  (function () {
+    /* Eating restarts the cadence clock, so the new food gets a step of grace
+       instead of inheriting the old food's parity. */
+    var g = S.createGame({ rng: function () { return 0; } });
+    g.snake = [{ x: 5, y: 10 }, { x: 4, y: 10 }, { x: 3, y: 10 }];
+    g.dir = S.DIRS.right; g.dirMoved = S.DIRS.right;
+    g.clock = 1;                    // one more step and the food would move
+    g.food = { x: 6, y: 10 };       // directly ahead: this step is the meal
+    eq('the meal reports eat', S.tick(g), 'eat');
+    g.food = { x: 9, y: 10 };       // 3 cells ahead, well inside the radius
+    S.tick(g);
+    ok('the food holds still on the step after a meal (the clock restarted)',
+      g.food.x === 9 && g.food.y === 10, JSON.stringify(g.food));
+    S.tick(g);
+    ok('...and flees on the step after that',
+      g.food.x === 10 && g.food.y === 10, JSON.stringify(g.food));
+  })();
+
+  (function () {
+    // Sharing one coordinate with the food is not a meal.
+    var g = S.createGame({ rng: function () { return 0; } });
+    g.snake = [{ x: 5, y: 10 }, { x: 4, y: 10 }, { x: 3, y: 10 }];
+    g.dir = S.DIRS.right; g.dirMoved = S.DIRS.right; g.clock = 0;
+    g.food = { x: 6, y: 11 };       // same column as the next head cell, one row off
+    eq('passing under the food is not a meal', S.tick(g), 'move');
+    eq('...and the score does not move', g.score, 0);
+    g.snake = [{ x: 5, y: 10 }, { x: 4, y: 10 }, { x: 3, y: 10 }];
+    g.dir = S.DIRS.right; g.dirMoved = S.DIRS.right;
+    g.food = { x: 6, y: 10 };       // the same step, this time on the food
+    eq('landing on it is', S.tick(g), 'eat');
   })();
 
   // -------------------------------------------------------------- speed ramp
@@ -221,6 +336,8 @@
     ok('the refused reversal is not fatal', S.tick(g) !== 'dead');
     eq('the queued turn is the one that happened', g.dirMoved, S.DIRS.up);
     eq('after moving up, left is now legal', S.turn(g, S.DIRS.left), true);
+    g.over = true;
+    eq('a finished run refuses to steer', S.turn(g, S.DIRS.right), false);
   })();
 
   (function () {
@@ -250,6 +367,23 @@
   eq('decode "" -> 0', S.decodeBest(''), 0);
   eq('decode null (nothing stored) -> 0', S.decodeBest(null), 0);
   eq('decode a 10 kB blob -> 0', S.decodeBest(new Array(10241).join('9')), 0);
+  /* The blob row cannot tell the length guard from anything else: Number() of
+     ten thousand nines is Infinity, which the value guards catch on their own.
+     A 13-character string worth 42 is the input that isolates it. */
+  eq('decode "0000000000042" (13 chars) -> 0', S.decodeBest('0000000000042'), 0);
+  eq('decode "000000000042" (12 chars) -> 42', S.decodeBest('000000000042'), 42);
+  // Number() would take all of these; the comment says plain integers only.
+  eq('decode "0x10" -> 0', S.decodeBest('0x10'), 0);
+  eq('decode "1e5" -> 0', S.decodeBest('1e5'), 0);
+  eq('decode " 9 " -> 0', S.decodeBest(' 9 '), 0);
+  eq('decode "+5" -> 0', S.decodeBest('+5'), 0);
+  eq('decode "5.0" -> 0', S.decodeBest('5.0'), 0);
+  eq('decode "0b11" -> 0', S.decodeBest('0b11'), 0);
+  eq('decode "0o17" -> 0', S.decodeBest('0o17'), 0);
+  // The ceiling is inclusive, and one past it is not.
+  eq('decode "1000000" (the ceiling) -> 1000000', S.decodeBest('1000000'), 1000000);
+  eq('decode "1000001" -> 0', S.decodeBest('1000001'), 0);
+  eq('decode "9999999" -> 0', S.decodeBest('9999999'), 0);
   eq('decode "Infinity" -> 0', S.decodeBest('Infinity'), 0);
   eq('decode a legitimate "42" -> 42', S.decodeBest('42'), 42);
   eq('decode "0" -> 0', S.decodeBest('0'), 0);
@@ -270,6 +404,23 @@
       ok('localStorage round-trip', false, 'storage unavailable: ' + e);
     }
   })();
+
+  // ------------------------------------------------------------ key mapping
+  eq('keyDir("ArrowUp") -> up', S.keyDir('ArrowUp'), 'up');
+  eq('keyDir("w") -> up', S.keyDir('w'), 'up');
+  eq('keyDir("D") -> right', S.keyDir('D'), 'right');
+  eq('keyDir("q") -> null', S.keyDir('q'), null);
+  eq('keyDir("__proto__") -> null', S.keyDir('__proto__'), null);
+  eq('keyDir("constructor") -> null', S.keyDir('constructor'), null);
+  eq('keyDir("toString") -> null', S.keyDir('toString'), null);
+  eq('keyDir(undefined) -> null', S.keyDir(undefined), null);
+
+  // A keydown carrying ctrl/meta/alt belongs to the browser, not to the game.
+  eq('a bare key is ours', S.isBareKey({}), true);
+  eq('shift is still ours', S.isBareKey({ shiftKey: true }), true);
+  eq('ctrl is not', S.isBareKey({ ctrlKey: true }), false);
+  eq('meta is not', S.isBareKey({ metaKey: true }), false);
+  eq('alt is not', S.isBareKey({ altKey: true }), false);
 
   var summary = document.getElementById('summary');
   summary.textContent = pass + ' passed, ' + fail + ' failed';
