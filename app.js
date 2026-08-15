@@ -454,6 +454,11 @@
       if (state === shownState) return;
       shownState = state;
       pauseBtn.textContent = paused ? 'resume' : 'pause';
+      /* togglePause() early-returns once the run is over, so leaving the
+         button enabled offered a full hover-and-focus affordance for nothing.
+         Restart re-enables it: the flag is derived from the state, not
+         latched. */
+      pauseBtn.disabled = game.over;
       if (state === 'run') {
         overlay.hidden = true;
         return;
