@@ -598,18 +598,23 @@
       }
       overlay.hidden = false;
       overlay.className = state === 'start' ? 'overlay is-start' : 'overlay';
+      /* The prompts name every gesture that works, and only those. On a touch
+         screen a tap and a swipe both start a run and both play again; on a
+         mouse a click on the board does the same as the key it names. The
+         overlay used to say 'swipe the board to start' while the footer said
+         'tap it to start', and a 3 px tap did start the run. */
       if (state === 'over') {
         oTitle.textContent = 'game over';
         oLine.textContent = 'score ' + game.score + '  ·  best ' + best;
-        oHint.textContent = COARSE ? 'tap the board to play again'
-                                   : 'press r or tap the board to play again';
+        oHint.textContent = COARSE ? 'tap or swipe the board to play again'
+                                   : 'press r or click the board to play again';
       } else if (state === 'start') {
         // One line, at the foot of the board: the mechanic is already stated
         // under the title, and the snake and the food should be visible.
         oTitle.textContent = '';
         oLine.textContent = '';
-        oHint.textContent = COARSE ? 'swipe the board to start'
-                                   : 'press an arrow key to start';
+        oHint.textContent = COARSE ? 'tap or swipe the board to start'
+                                   : 'press an arrow key or click the board to start';
       } else {
         oTitle.textContent = 'paused';
         oLine.textContent = 'score ' + game.score + '  ·  best ' + best;
@@ -641,7 +646,7 @@
        none of them: swipe steering was documented nowhere and tap-to-restart
        only appeared in the overlay after the run was already lost. */
     document.querySelector('.hint').textContent = COARSE
-      ? 'swipe the board to steer · tap it to start or play again'
+      ? 'swipe to steer · tap or swipe to start or play again'
       : 'arrows / wasd to steer · p or space to pause · r to restart';
 
     pauseBtn.addEventListener('click', togglePause);
@@ -659,6 +664,7 @@
     var stage = document.getElementById('stage');
     var touchId = null;
     var startX = 0, startY = 0;
+    var lastTouchAt = 0;
 
     stage.addEventListener('touchstart', function (e) {
       if (touchId !== null) return;
@@ -666,6 +672,7 @@
       touchId = t.identifier;
       startX = t.clientX;
       startY = t.clientY;
+      lastTouchAt = Date.now();
       e.preventDefault();
     }, { passive: false });
 
@@ -680,15 +687,22 @@
       }
       if (!t) return;
       touchId = null;
+      lastTouchAt = Date.now();
       var dx = t.clientX - startX;
       var dy = t.clientY - startY;
       var adx = Math.abs(dx), ady = Math.abs(dy);
-      if (Math.max(adx, ady) >= SWIPE_MIN) {
+      /* Once the run is over, every gesture on the board means play again —
+         there is nothing left to steer. A swipe used to do nothing at all
+         here: turn() refuses while over is true, so a flick past the 24 px
+         threshold was silence, on the one control the footer advertises as
+         *the* touch gesture. The score card it dismisses is the same card a
+         tap already dismissed, and both numbers on it stay in the HUD. */
+      if (game.over) {
+        restart();
+      } else if (Math.max(adx, ady) >= SWIPE_MIN) {
         start();
         if (adx > ady) turn(game, dx > 0 ? DIRS.right : DIRS.left);
         else turn(game, dy > 0 ? DIRS.down : DIRS.up);
-      } else if (game.over) {
-        restart();
       } else {
         start();
       }
@@ -696,6 +710,19 @@
     }
     stage.addEventListener('touchend', endTouch, { passive: false });
     stage.addEventListener('touchcancel', function () { touchId = null; });
+
+    /* A mouse click on the board does what every other input does: starts the
+       first run, plays again once it is over. Only touch was bound to the
+       stage, so the first thing a stranger tries — clicking the board — was
+       the one path that did nothing. touchend preventDefault()s, which
+       suppresses the synthetic click that follows a tap, but a browser that
+       does not honour that would restart twice, so a click arriving on the
+       heels of a touch is ignored. */
+    stage.addEventListener('click', function () {
+      if (Date.now() - lastTouchAt < 700) return;
+      if (game.over) restart();
+      else start();
+    });
 
     /* Leaving the tab pauses the run. A hidden tab still gets throttled
        animation frames, so the snake used to keep stepping where nobody could
