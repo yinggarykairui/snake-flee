@@ -576,15 +576,18 @@
       commitBest(game.score);
     }
 
-    /* Keep-the-larger applies in both directions, on purpose. A `storage`
-       event with key === null means another tab cleared storage wholesale;
-       this tab still does not lower the best it is showing, and its next
-       commit writes that best back. The alternative — trusting a clear —
-       hands any tab the power to erase a real record, which is the defect
-       commitBest() exists to prevent. So a best cannot be cleared while a tab
-       that has seen it is open; closing the tabs and clearing does clear it.
-       Nothing on the page or in the README promises otherwise, and adding a
-       reset control is a feature, not this fix. */
+    /* This handler only ever raises the displayed best; nothing here lowers
+       it. A `storage` event with key === null means another tab cleared
+       storage wholesale, and the deliberate choice is not to follow it down:
+       trusting any tab to lower this one is the defect commitBest() exists to
+       prevent. Measured consequence, two tabs, stored best 50 (and this is
+       the whole of it — no comment should claim more):
+         B clears storage      -> A shows 50, nothing stored
+         A then dies scoring 3 -> A shows 50, storage holds 3, not 50
+         A reloads             -> A shows 3
+       So a clear does take effect; the display is what lags, until the next
+       load. Clearing is the user's to do, and a reset control on the page
+       would be a feature, not a fix. */
     global.addEventListener('storage', function (e) {
       if (e.key !== null && e.key !== BEST_KEY) return;
       var v = loadBest();
