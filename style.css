@@ -79,13 +79,17 @@ body {
    colourblind eye and a screenshot. Quiet either way — the number beside it
    is already the news. */
 .score.is-record .label { color: var(--accent); }
-.score .mark { display: none; }
-.score.is-record .mark {
-  display: inline;
+/* The star's box is reserved in both states. display:none took the glyph out
+   of the line entirely, so `.score` slid 15 px left the instant the record
+   was taken (11 px at 320) and jumped back on restart: the reward for a
+   record was a shove sideways. visibility keeps the box and shows nothing. */
+.score .mark {
+  visibility: hidden;
   color: var(--accent);
   font-size: 13px;
   margin-left: 3px;
 }
+.score.is-record .mark { visibility: visible; }
 .score b { color: var(--ink); font-size: 17px; font-weight: 600; margin-left: 2px; }
 
 /* Sized by JS from the space the HUD and footer leave over — the element
