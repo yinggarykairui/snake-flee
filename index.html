@@ -34,8 +34,10 @@
         <p class="over-title" id="overlayTitle">paused</p>
         <p class="over-line" id="overlayLine"></p>
         <!-- Only on an ending that took the record. The card said the same
-             flat thing either way; the number was the only tell. -->
-        <p class="over-record" id="overlayRecord" hidden>&#9733; a new best</p>
+             flat thing either way; the number was the only tell. The star is
+             aria-hidden for the same reason the HUD's is at :24 — the words
+             beside it already say it, and "black star a new best" is noise. -->
+        <p class="over-record" id="overlayRecord" hidden><span aria-hidden="true">&#9733;</span> a new best</p>
         <p class="over-hint" id="overlayHint"></p>
       </div>
     </div>
