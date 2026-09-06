@@ -464,8 +464,21 @@
   })();
 
   // ------------------------------------------------------------ key mapping
+  /* Every entry in the table, one row each. Three of the twelve were asserted
+     and the other nine were not, so deleting KEYMAP.W — shift held on WASD,
+     which is how anyone steering with a hand on shift actually types it — left
+     the suite at a clean pass. A mapping is only as covered as its rows. */
   eq('keyDir("ArrowUp") -> up', S.keyDir('ArrowUp'), 'up');
+  eq('keyDir("ArrowDown") -> down', S.keyDir('ArrowDown'), 'down');
+  eq('keyDir("ArrowLeft") -> left', S.keyDir('ArrowLeft'), 'left');
+  eq('keyDir("ArrowRight") -> right', S.keyDir('ArrowRight'), 'right');
   eq('keyDir("w") -> up', S.keyDir('w'), 'up');
+  eq('keyDir("a") -> left', S.keyDir('a'), 'left');
+  eq('keyDir("s") -> down', S.keyDir('s'), 'down');
+  eq('keyDir("d") -> right', S.keyDir('d'), 'right');
+  eq('keyDir("W") -> up', S.keyDir('W'), 'up');
+  eq('keyDir("A") -> left', S.keyDir('A'), 'left');
+  eq('keyDir("S") -> down', S.keyDir('S'), 'down');
   eq('keyDir("D") -> right', S.keyDir('D'), 'right');
   eq('keyDir("q") -> null', S.keyDir('q'), null);
   eq('keyDir("__proto__") -> null', S.keyDir('__proto__'), null);
