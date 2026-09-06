@@ -48,8 +48,14 @@ body {
   gap: 10px;
 }
 
+/* Wraps, because a flex row that cannot fit its items overflows them rather
+   than shrinking. At 320 px under 200% page zoom — a 160 px CSS viewport —
+   the titles and the two scores do not fit on one line, and `best` ran off
+   the right edge of the page. Wrapping drops the scores to their own line at
+   that width and at no other: every width above it is one row as before. */
 .hud {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
@@ -219,6 +225,18 @@ canvas {
   color: var(--muted);
   font-size: 12.5px;
   text-align: center;
+}
+
+/* The two pills and their gap measure 165 px and never shrink, and .controls
+   is centred, so below 165 px of viewport the row hangs off both edges: at
+   320 px under 200% page zoom — a 160 px CSS viewport — `pause` started at
+   -2.5 px and `restart` ended at 162.5, and the page scrolled sideways.
+   165 px is where the row stops fitting the window, so that is the query.
+   This is a width question and nothing else, which is what a width query can
+   answer; which arrangement gives the larger board is not, and stays in
+   chooseLayout(). */
+@media (max-width: 164px) {
+  .controls { flex-wrap: wrap; justify-content: center; }
 }
 
 /* Nothing on this page transitions or animates today; the one piece of motion
