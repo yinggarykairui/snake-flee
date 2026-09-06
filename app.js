@@ -500,6 +500,7 @@
     var overlay = document.getElementById('overlay');
     var oTitle = document.getElementById('overlayTitle');
     var oLine = document.getElementById('overlayLine');
+    var oRecord = document.getElementById('overlayRecord');
     var oHint = document.getElementById('overlayHint');
     var pauseBtn = document.getElementById('pauseBtn');
     var bestSlot = document.getElementById('bestSlot');
@@ -589,6 +590,14 @@
     }
 
     function onGameOver() {
+      /* Before the commit, not after. commitBest raises `best` to the score,
+         so the `game.score > best` test in frame() can no longer see the
+         record the run just took — and a run that takes the record in the
+         same frame it ends did exactly that: the catch-up loop can eat and
+         then die in one frame, and the win always does (score 397 lands and
+         the board fills on the same step). The card said nothing about a best
+         it had just set. */
+      if (game.score > best) beatThisRun = true;
       commitBest(game.score);
     }
 
@@ -630,6 +639,10 @@
       }
       overlay.hidden = false;
       overlay.className = state === 'start' ? 'overlay is-start' : 'overlay';
+      /* The record line belongs to an ending and to nothing else. beatThisRun
+         is settled by the time the run stops and restart() clears it, so this
+         is the whole of the bookkeeping. */
+      oRecord.hidden = true;
       /* The prompts name every gesture that works, and only those. On a touch
          screen a tap and a swipe both start a run and both play again; on a
          mouse a click on the board does the same as the key it names. The
@@ -643,12 +656,17 @@
            meal. */
         oTitle.textContent = 'you win';
         oLine.textContent = 'the board is full  ·  score ' + game.score;
+        oRecord.hidden = !beatThisRun;
         oHint.textContent = COARSE ? 'tap or swipe the board to play again'
                                    : 'press r or click the board to play again';
         say('you win · the board is full · score ' + game.score);
       } else if (state === 'over') {
         oTitle.textContent = 'game over';
         oLine.textContent = 'score ' + game.score + '  ·  best ' + best;
+        /* The card read identically whether or not the run took the record —
+           same title, same grey, and two equal numbers as the only tell. Say
+           it in words. */
+        oRecord.hidden = !beatThisRun;
         oHint.textContent = COARSE ? 'tap or swipe the board to play again'
                                    : 'press r or click the board to play again';
       } else if (state === 'start') {

@@ -158,6 +158,9 @@ canvas {
 .overlay[hidden] { display: none; }
 .over-title { margin: 0; font-size: 20px; font-weight: 600; }
 .over-line { margin: 0; font-size: 15px; font-variant-numeric: tabular-nums; }
+/* Same two channels as the HUD mark: the accent colour and the star, so the
+   line reads as the record even with no hue at all. */
+.over-record { margin: 0; font-size: 14px; font-weight: 600; color: var(--accent); }
 .over-hint { margin: 0; font-size: 13px; color: var(--muted); }
 
 .foot {
