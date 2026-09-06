@@ -506,9 +506,23 @@ try {
   eq('decode "0" -> 0', S.decodeBest('0'), 0);
 
   (function () {
+    /* Storage is not always reachable: a private window, a browser with site
+       data off, a third-party frame. The game is fine there — it plays, the
+       best reads 0, nothing throws — so the suite has to be fine there too.
+       This block used to call ok(false) on the throw, which failed one row of
+       145 in a mode the build itself handles, and made the README's count
+       false the moment anyone opened the file in a private window.
+       Probe once, assert whichever branch applies, three rows either way. */
+    var PROBE = S.BEST_KEY + '.probe';
+    var available = true;
     var stored = null;
-    try { stored = localStorage.getItem(S.BEST_KEY); } catch (e) {}
     try {
+      stored = localStorage.getItem(S.BEST_KEY);
+      localStorage.setItem(PROBE, '1');
+      localStorage.removeItem(PROBE);
+    } catch (e) { available = false; }
+
+    if (available) {
       localStorage.setItem(S.BEST_KEY, '{"best":7}');
       eq('a garbage stored value loads as 0', S.loadBest(), 0);
       localStorage.setItem(S.BEST_KEY, '137');
@@ -517,8 +531,12 @@ try {
       eq('saved best round-trips', S.loadBest(), 58);
       if (stored === null) localStorage.removeItem(S.BEST_KEY);
       else localStorage.setItem(S.BEST_KEY, stored);
-    } catch (e) {
-      ok('localStorage round-trip', false, 'storage unavailable: ' + e);
+    } else {
+      var threw = false;
+      try { S.saveBest(58); } catch (e) { threw = true; }
+      eq('storage unavailable: loadBest reports no best', S.loadBest(), 0);
+      ok('storage unavailable: saveBest swallows it and the run carries on', !threw);
+      eq('storage unavailable: still no best after a save', S.loadBest(), 0);
     }
   })();
 
