@@ -25,6 +25,10 @@ food measures distance the same wrapped way you have to think about it. Every
 meal adds a segment and a point. The step interval drops 4 ms per point, from
 165 ms down to an 80 ms floor. Running into yourself ends the run.
 
+There is one other way it can end. Fill all 400 cells and you win, on a card
+of its own rather than the game-over one. That is 397 meals, so nobody is
+going to see it by playing; it is held by an assertion instead.
+
 The first run waits for you, so the board is not already moving while you read
 this. An arrow or WASD key, space, `p` or `r` starts it, and so does a tap, a
 swipe or a click on the board. Nothing else does: `q`, `Escape`, `F1` and
@@ -33,19 +37,21 @@ reloads. Once the run is over, a tap, a swipe, a click or `r` plays again.
 
 Leaving the tab pauses the run rather than finishing it somewhere you cannot
 see. Your best score is kept in the browser and banked the moment you pass it,
-not at the end of the run. It is re-read from storage on every write, so a
+not at the end of the run. While you are above it the HUD shows a star beside
+the number, and the end card says a new best in words. It is re-read from storage on every write, so a
 second tab cannot overwrite it, and a best another tab stores is picked up
 without a reload. Clearing storage elsewhere does not lower the number on
 screen until the page is loaded again.
 
-The board is a square sized to whatever the window leaves over. On a short
-window the HUD and footer move to either side of it, but only when that
-arrangement measures larger than stacking them.
+The board is a square sized to whatever the window leaves over, and it stays
+square at every window width: a narrow window gets a smaller square, never a
+rectangle. On a short window the HUD and footer move to either side of it, but
+only when that arrangement measures larger than stacking them.
 
 ## How to run
 
 Open `index.html` in any browser — no build step, no dependencies, no server.
-`tests.html` opens the same way and runs 120 logic assertions.
+`tests.html` opens the same way and runs 145 logic assertions.
 
 ## Why it exists
 
