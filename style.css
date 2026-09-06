@@ -177,6 +177,23 @@ canvas {
 .over-record { margin: 0; font-size: 14px; font-weight: 600; color: var(--accent); }
 .over-hint { margin: 0; font-size: 13px; color: var(--muted); }
 
+/* A card small enough for the board it is on. app.js adds .is-tight to the
+   stage below a 232 px board (see TIGHT_SIZE) — measured, because a width
+   media query cannot see a small board on a wide window. Without it the copy
+   overflowed the stage it is anchored to: at a 160 px viewport (a 320 px
+   phone at 200% page zoom) the board is 128 px and the win card's lowest
+   line sat 75 px under it, over both pills, with the plate over the tagline
+   and the scores. The type, the gaps, the padding and the plates all step
+   down together; below 232 px the card is the only thing on the board worth
+   reading, so smaller type there costs nothing a player wanted. */
+.is-tight .overlay { gap: 1px; padding: 5px; line-height: 1.25; }
+.is-tight .over-title { font-size: 13px; }
+.is-tight .over-line { font-size: 10px; }
+.is-tight .over-record { font-size: 10px; }
+.is-tight .over-hint { font-size: 10px; }
+.is-tight .overlay.is-start > p,
+.is-tight .overlay.is-won > p { padding: 0 4px; }
+
 .foot {
   flex: 0 0 auto;
   display: flex;

@@ -361,13 +361,28 @@
   var ROW_CLASS = 'lay-row';
   var MIN_SIZE = 160;
 
+  /* The overlay cards are anchored to the board (inset:0 on the stage) but
+     their copy is not: on a small board the win card's five wrapped lines
+     spilled out of it, and at a 160 px viewport — a 320 px phone at 200%
+     zoom, where the board is 128 px — the lowest line sat 75 px below the
+     board, across the pause and restart pills, while the top plate covered
+     the tagline and both scores. The game-over card did the same, 18 px over
+     the pause pill, and that is the card every player reaches.
+     .is-tight scales the card down to the board it sits on (see style.css).
+     A class and not a width media query, for the same reason .lay-row is one:
+     the window cannot answer this. The same 128 px board turns up on a short
+     wide window too, where a width query would see 300 px and do nothing. */
+  var TIGHT_SIZE = 232;
+  var TIGHT_CLASS = 'is-tight';
+
   var els = null;
   function refs() {
     if (!els) {
       els = {
         wrap: document.querySelector('.wrap'),
         hud: document.querySelector('.hud'),
-        foot: document.querySelector('.foot')
+        foot: document.querySelector('.foot'),
+        stage: document.querySelector('.stage')
       };
     }
     return els;
@@ -467,6 +482,11 @@
       canvas.style.width = size + 'px';
       canvas.width = Math.round(size * dpr);
       canvas.height = Math.round(size * dpr);
+      // The card is part of the board's size, so it is settled here, where
+      // that size is known, and not by a query against the window.
+      if (refs().stage) {
+        refs().stage.classList.toggle(TIGHT_CLASS, size < TIGHT_SIZE);
+      }
     }
     return { size: size, dpr: dpr };
   }
