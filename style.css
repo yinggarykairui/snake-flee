@@ -72,9 +72,20 @@ body {
   font-variant-numeric: tabular-nums;
 }
 .score { color: var(--muted); font-size: 13px; }
-/* The record mark: the label alone changes colour while the run is above the
-   stored best. Quiet on purpose — the number beside it is already the news. */
+/* The record mark, while the run is above the stored best. Two channels, not
+   one: the label takes the accent colour *and* a star appears beside the
+   number. The colour was carrying it alone at 5.55:1, which is a difference
+   only a reader who sees the hue can read; the star survives greyscale, a
+   colourblind eye and a screenshot. Quiet either way — the number beside it
+   is already the news. */
 .score.is-record .label { color: var(--accent); }
+.score .mark { display: none; }
+.score.is-record .mark {
+  display: inline;
+  color: var(--accent);
+  font-size: 13px;
+  margin-left: 3px;
+}
 .score b { color: var(--ink); font-size: 17px; font-weight: 600; margin-left: 2px; }
 
 /* Sized by JS from the space the HUD and footer leave over — the element

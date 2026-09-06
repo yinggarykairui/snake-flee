@@ -18,7 +18,10 @@
     </div>
     <div class="scores">
       <span class="score"><span class="label">score</span> <b id="score">0</b></span>
-      <span class="score" id="bestSlot"><span class="label">best</span> <b id="best">0</b></span>
+      <!-- The star is the record's second channel: colour alone is nothing to
+           a colourblind player. aria-hidden because the live region already
+           says "new best" in words, and "black star" would be noise. -->
+      <span class="score" id="bestSlot"><span class="label">best</span> <b id="best">0</b><span class="mark" aria-hidden="true">&#9733;</span></span>
     </div>
   </header>
 
