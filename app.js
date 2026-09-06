@@ -659,10 +659,13 @@
          'tap it to start', and a 3 px tap did start the run. */
       if (state === 'won') {
         /* Its own card, not the death card with a kinder number. The overlay
-           announces itself (role=status), but the live region gets this one
-           too: it is the only ending a player has never seen, and syncHud has
-           just said 'score 397' there, which on its own reads like any other
-           meal. */
+           announces itself (role=status) and that is the whole announcement,
+           the same as game over and paused. Saying it through the live region
+           as well made the win — alone among the three — speak twice, and the
+           second utterance landed in the same frame as syncHud's, overwriting
+           `score 398 · new best` with a line that never said "best". So the
+           card carries the win, the score, the best and the record line, and
+           the live region keeps the score line it already wrote. */
         oTitle.textContent = 'you win';
         // Same three-part line as game over and paused. The win card was
         // the only one that dropped the best, which is the card with the
@@ -672,7 +675,6 @@
         oRecord.hidden = !beatThisRun;
         oHint.textContent = COARSE ? 'tap or swipe the board to play again'
                                    : 'press r or click the board to play again';
-        say('you win · the board is full · score ' + game.score);
       } else if (state === 'over') {
         oTitle.textContent = 'game over';
         oLine.textContent = 'score ' + game.score + '  ·  best ' + best;
