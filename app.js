@@ -270,6 +270,12 @@
       if (g.snake.length >= g.cols * g.rows) {
         g.over = true;
         g.won = true;
+        /* The meal is eaten and there is nowhere to put another one, so the
+           board has no food on it. Leaving the old cell in place drew the
+           accent dot back over the head in the one frame the win exists to
+           show: a full board with the meal you just caught still sitting
+           uneaten on top of it. draw() skips the dot when this is null. */
+        g.food = null;
         return 'win';
       }
       g.clock = 0;
@@ -336,10 +342,13 @@
         cell - pad * 2, cell - pad * 2);
     }
 
-    ctx.fillStyle = C_ACCENT;
-    ctx.beginPath();
-    ctx.arc((g.food.x + 0.5) * cell, (g.food.y + 0.5) * cell, cell * 0.3, 0, Math.PI * 2);
-    ctx.fill();
+    // No food on a won board (see tick): nothing to draw.
+    if (g.food) {
+      ctx.fillStyle = C_ACCENT;
+      ctx.beginPath();
+      ctx.arc((g.food.x + 0.5) * cell, (g.food.y + 0.5) * cell, cell * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // Board is a square fitted to the free space; the backing store follows
