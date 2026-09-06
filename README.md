@@ -51,7 +51,9 @@ only when that arrangement measures larger than stacking them.
 ## How to run
 
 Open `index.html` in any browser — no build step, no dependencies, no server.
-`tests.html` opens the same way and runs 145 logic assertions.
+`tests.html` opens the same way and runs 168 assertions. Most are pure logic;
+the last of them drive the real page and read what it renders. The count is
+the same in a private window, where storage throws.
 
 ## Why it exists
 
