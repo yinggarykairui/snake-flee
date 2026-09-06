@@ -664,7 +664,11 @@
            just said 'score 397' there, which on its own reads like any other
            meal. */
         oTitle.textContent = 'you win';
-        oLine.textContent = 'the board is full  ·  score ' + game.score;
+        // Same three-part line as game over and paused. The win card was
+        // the only one that dropped the best, which is the card with the
+        // most reason to state it.
+        oLine.textContent = 'the board is full  ·  score ' + game.score +
+          '  ·  best ' + best;
         oRecord.hidden = !beatThisRun;
         oHint.textContent = COARSE ? 'tap or swipe the board to play again'
                                    : 'press r or click the board to play again';
