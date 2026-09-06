@@ -37,11 +37,11 @@ reloads. Once the run is over, a tap, a swipe, a click or `r` plays again.
 
 Leaving the tab pauses the run rather than finishing it somewhere you cannot
 see. Your best score is kept in the browser and banked the moment you pass it,
-not at the end of the run. While you are above it the HUD shows a star beside
-the number, and the end card says a new best in words. It is re-read from storage on every write, so a
-second tab cannot overwrite it, and a best another tab stores is picked up
-without a reload. Clearing storage elsewhere does not lower the number on
-screen until the page is loaded again.
+not at the end of the run. From that meal on the HUD shows a star beside the
+number, and the end card says a new best in words. The stored value is re-read
+on every write, so a second tab cannot overwrite it, and a best another tab
+stores is picked up without a reload. Clearing storage elsewhere does not lower
+the number on screen until the page is loaded again.
 
 The board is a square sized to whatever the window leaves over, and it stays
 square at every window width: a narrow window gets a smaller square, never a
