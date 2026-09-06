@@ -647,7 +647,8 @@
         return;
       }
       overlay.hidden = false;
-      overlay.className = state === 'start' ? 'overlay is-start' : 'overlay';
+      overlay.className = 'overlay' +
+        (state === 'start' ? ' is-start' : state === 'won' ? ' is-won' : '');
       /* The record line belongs to an ending and to nothing else. beatThisRun
          is settled by the time the run stops and restart() clears it, so this
          is the whole of the bookkeeping. */
