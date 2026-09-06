@@ -308,6 +308,64 @@
       JSON.stringify(g.snake[0]));
   })();
 
+  // -------------------------------------------------------------- the win
+  (function () {
+    /* Filling the board is 397 meals on a 20x20, so nobody will ever reach it
+       by playing — which is exactly why it has to be asserted. It used to end
+       the run as a death: with no free cell left spawnFood handed back the
+       stale food, that cell was the head, and the next step was a collision
+       with yourself. Build the board one cell short and eat the last one. */
+    function full() {
+      var g = S.createGame({ rng: function () { return 0; } });
+      var snake = [{ x: 7, y: 4 }];                 // head, about to move up
+      for (var y = 0; y < N; y++) {
+        for (var x = 0; x < N; x++) {
+          if (x === 7 && (y === 3 || y === 4)) continue;   // (7,3) is the gap
+          snake.push({ x: x, y: y });
+        }
+      }
+      g.snake = snake;
+      g.grow = 0;
+      g.score = N * N - 3;
+      g.dir = S.DIRS.up; g.dirMoved = S.DIRS.up;
+      g.food = { x: 7, y: 3 };
+      return g;
+    }
+
+    var g = full();
+    eq('the board is one cell short of full', g.snake.length, N * N - 1);
+    eq('eating the last free cell is a win, not a death', S.tick(g), 'win');
+    eq('...and the snake fills the board', g.snake.length, N * N);
+    eq('...and the meal still scored', g.score, N * N - 2);
+    eq('...the run is over', g.over, true);
+    eq('...and it is marked won', g.won, true);
+    eq('a won game stays won and never reports dead', S.tick(g), 'win');
+    eq('a won game refuses to steer, like any finished run',
+      S.turn(g, S.DIRS.left), false);
+
+    // The win is a state of its own: a fresh game and a death are not it.
+    var fresh = S.createGame({ rng: function () { return 0; } });
+    eq('a fresh game has not won', fresh.won, false);
+    S.reset(g);
+    eq('reset clears the win', g.won, false);
+    eq('reset revives a won game', g.over, false);
+
+    var d = S.createGame({ rng: function () { return 0; } });
+    d.snake = [{ x: 5, y: 5 }, { x: 6, y: 5 }, { x: 6, y: 6 }, { x: 5, y: 6 }, { x: 4, y: 6 }];
+    d.dir = S.DIRS.down; d.dirMoved = S.DIRS.left;
+    d.food = { x: 15, y: 15 };
+    eq('death is still death', S.tick(d), 'dead');
+    eq('...and a death is not a win', d.won, false);
+
+    /* One cell short of full is an ordinary meal, so the win is the board
+       filling and not merely a long snake. Two cells free, eat one. */
+    var g2 = full();
+    g2.snake.pop();                 // give a second cell back to the board
+    eq('two cells free: the same meal is an ordinary eat', S.tick(g2), 'eat');
+    eq('...and the run continues', g2.over, false);
+    eq('...and nothing is won', g2.won, false);
+  })();
+
   (function () {
     // Self-collision: a length-5 snake turned into its own body.
     var g = S.createGame({ rng: function () { return 0; } });

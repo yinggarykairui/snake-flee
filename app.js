@@ -186,7 +186,10 @@
       score: 0,
       grow: 0,
       clock: 0,
-      over: false
+      over: false,
+      // Two ways for a run to end, and they are not the same news. `over` is
+      // "the run has stopped"; `won` says which of the two stopped it.
+      won: false
     };
     reset(g);
     return g;
@@ -202,6 +205,7 @@
     g.grow = 0;
     g.clock = 0;
     g.over = false;
+    g.won = false;
     g.food = spawnFood(g);
     return g;
   }
@@ -228,9 +232,9 @@
     return free[Math.floor(g.rng() * free.length) % free.length];
   }
 
-  // One snake step. Returns 'eat' | 'move' | 'dead'.
+  // One snake step. Returns 'eat' | 'move' | 'dead' | 'win'.
   function tick(g) {
-    if (g.over) return 'dead';
+    if (g.over) return g.won ? 'win' : 'dead';
     var d = g.dir;
     var head = g.snake[0];
     var next = { x: wrap(head.x + d.x, g.cols), y: wrap(head.y + d.y, g.rows) };
@@ -257,6 +261,17 @@
     else g.snake.pop();
 
     if (ate) {
+      /* The meal that fills the last free cell is a win, and it has to be
+         caught here, before spawnFood: with nothing free, spawnFood hands
+         back the stale food — which is the cell the head just took — so the
+         very next step read as running into yourself. Winning the board
+         reported as dying on it. 397 meals on a 20x20, so no one will see
+         this by playing; the assertion is how it is held. */
+      if (g.snake.length >= g.cols * g.rows) {
+        g.over = true;
+        g.won = true;
+        return 'win';
+      }
       g.clock = 0;
       g.food = spawnFood(g);
       return 'eat';
@@ -595,7 +610,8 @@
     });
 
     function syncChrome() {
-      var state = game.over ? 'over' : (!started ? 'start' : (paused ? 'paused' : 'run'));
+      var state = game.over ? (game.won ? 'won' : 'over')
+                            : (!started ? 'start' : (paused ? 'paused' : 'run'));
       if (state === shownState) return;
       var prevState = shownState;
       shownState = state;
@@ -618,7 +634,18 @@
          mouse a click on the board does the same as the key it names. The
          overlay used to say 'swipe the board to start' while the footer said
          'tap it to start', and a 3 px tap did start the run. */
-      if (state === 'over') {
+      if (state === 'won') {
+        /* Its own card, not the death card with a kinder number. The overlay
+           announces itself (role=status), but the live region gets this one
+           too: it is the only ending a player has never seen, and syncHud has
+           just said 'score 397' there, which on its own reads like any other
+           meal. */
+        oTitle.textContent = 'you win';
+        oLine.textContent = 'the board is full  ·  score ' + game.score;
+        oHint.textContent = COARSE ? 'tap or swipe the board to play again'
+                                   : 'press r or click the board to play again';
+        say('you win · the board is full · score ' + game.score);
+      } else if (state === 'over') {
         oTitle.textContent = 'game over';
         oLine.textContent = 'score ' + game.score + '  ·  best ' + best;
         oHint.textContent = COARSE ? 'tap or swipe the board to play again'
@@ -769,7 +796,8 @@
         var budget = 4; // hard cap on catch-up steps per frame
         while (acc >= interval && budget-- > 0) {
           acc -= interval;
-          if (tick(game) === 'dead') { onGameOver(); break; }
+          var res = tick(game);
+          if (res === 'dead' || res === 'win') { onGameOver(); break; }
           interval = stepIntervalMs(game.score);
         }
         if (acc >= interval) acc = 0;
