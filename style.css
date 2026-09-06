@@ -85,11 +85,19 @@ body {
   place-items: center;
 }
 
-/* JS sets the pixel size each layout pass; these are only the pre-script
-   defaults so nothing flashes oversized before the first frame. */
+/* JS sets the width each layout pass; these are only the pre-script defaults
+   so nothing flashes oversized before the first frame. The height is not set
+   in JS and must not be: max-width clamps the width whenever the 160 px floor
+   is wider than the column — every viewport under 192 px — and an inline
+   height would then sit at 160 while the width was cut to 118, rendering the
+   board 118x160. The whole mechanic is defined in square cells, so that is a
+   wrong shape and not a cosmetic one. aspect-ratio makes the height follow
+   whatever the clamp leaves, at every width, with no breakpoint to get wrong. */
 canvas {
   display: block;
   max-width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
   background: var(--board);
   border-radius: var(--radius);
   touch-action: none; /* swipes steer, they must not scroll or zoom */

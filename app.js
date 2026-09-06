@@ -410,9 +410,8 @@
   function chooseLayout(viewH) {
     var e = refs();
     var had = e.wrap.classList.contains(ROW_CLASS);
-    var cw = canvas.style.width, ch = canvas.style.height;
-    canvas.style.width = '0px';
-    canvas.style.height = '0px';
+    var cw = canvas.style.width;
+    canvas.style.width = '0px';   // the height follows it (aspect-ratio)
     e.wrap.classList.remove(ROW_CLASS);
     var cs = global.getComputedStyle(e.wrap);
     var cap = e.wrap.clientWidth -
@@ -422,7 +421,6 @@
     var rowSize = fitSize(true, viewH, cap);
     if (!had) e.wrap.classList.remove(ROW_CLASS);
     canvas.style.width = cw;
-    canvas.style.height = ch;
     return { row: rowSize > colSize, cap: cap };
   }
 
@@ -453,8 +451,11 @@
     if (size !== lastSize || dpr !== lastDpr) {
       lastSize = size;
       lastDpr = dpr;
+      // Width only. The rendered height comes from aspect-ratio, so a width
+      // the column has to clamp takes the height down with it and the board
+      // stays square; the backing store keeps the unclamped size, which the
+      // clamp then scales down uniformly.
       canvas.style.width = size + 'px';
-      canvas.style.height = size + 'px';
       canvas.width = Math.round(size * dpr);
       canvas.height = Math.round(size * dpr);
     }
