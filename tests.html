@@ -16,6 +16,11 @@
   li { margin: 2px 0; }
   li.fail { color: var(--accent); font-weight: 600; }
   code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  /* The live game the DOM rows assert against. Off-screen, not display:none:
+     the rows read rendered geometry and computed style, and a box that is not
+     laid out has neither. Width fixed so the board size is the stylesheet's
+     answer and not the runner window's. */
+  .fixture { position: absolute; left: -20000px; top: 0; width: 560px; }
 </style>
 </head>
 <body>
@@ -25,8 +30,62 @@
   <ol id="results"></ol>
 </div>
 
-<!-- app.js only boots the game when the page has a #canvas, so loading it
-     here gives us the pure logic and nothing else. -->
+<!-- app.js boots the game when the page has a #canvas, so this is the real
+     chrome, running, for the rendered rows at the foot of the file. Six of the
+     changes shipped on day 042 could be reverted with the suite still green,
+     because every row here read a flag and none read the page. This is a copy
+     of index.html's chrome; it has to stay a copy for those rows to mean
+     anything. -->
+<div class="fixture" id="fixture">
+  <main class="wrap">
+    <header class="hud">
+      <div class="titles">
+        <h1 class="title">snake<span class="title-dim">, flee</span></h1>
+        <p class="tagline">the food runs away from you.</p>
+      </div>
+      <div class="scores">
+        <span class="score"><span class="label">score</span> <b id="score">0</b></span>
+        <span class="score" id="bestSlot"><span class="label">best</span> <b id="best">0</b><span class="mark" aria-hidden="true">&#9733;</span></span>
+      </div>
+    </header>
+    <div class="board" id="board">
+      <div class="stage" id="stage">
+        <canvas id="canvas" width="480" height="480" aria-label="Snake board"></canvas>
+        <div class="overlay" id="overlay" role="status" hidden>
+          <p class="over-title" id="overlayTitle">paused</p>
+          <p class="over-line" id="overlayLine"></p>
+          <p class="over-record" id="overlayRecord" hidden><span aria-hidden="true">&#9733;</span> a new best</p>
+          <p class="over-hint" id="overlayHint"></p>
+        </div>
+      </div>
+    </div>
+    <p class="sr-only" id="live" role="status" aria-live="polite"></p>
+    <footer class="foot">
+      <div class="controls">
+        <button class="btn" id="pauseBtn" type="button">pause</button>
+        <button class="btn" id="restartBtn" type="button">restart</button>
+      </div>
+      <p class="hint">arrows / wasd to steer &middot; p or space to pause &middot; r to restart</p>
+    </footer>
+  </main>
+</div>
+
+<script>
+/* app.js reads the stored best once, at boot, so the seed has to be in place
+   before it loads — which is also why the key is spelled out here rather than
+   read off the export. The record rows below need the stored best exactly one
+   short of the winning score: a record taken in the frame the run ends is the
+   case that reverted silently. The player's own value goes back at the end of
+   the run (restoreBest). A private window throws here; loadBest reports 0 in
+   that case and every row below still holds. */
+window.__realBest = null;
+window.__seeded = false;
+try {
+  window.__realBest = localStorage.getItem('snake-flee.best');
+  localStorage.setItem('snake-flee.best', '397');
+  window.__seeded = true;
+} catch (e) { /* storage unavailable; nothing seeded, nothing to put back */ }
+</script>
 <script src="app.js"></script>
 <script>
 (function () {
@@ -493,11 +552,177 @@
   eq('meta is not', S.isBareKey({ metaKey: true }), false);
   eq('alt is not', S.isBareKey({ altKey: true }), false);
 
-  var summary = document.getElementById('summary');
-  summary.textContent = pass + ' passed, ' + fail + ' failed';
-  summary.className = 'summary ' + (fail === 0 ? 'ok' : 'bad');
-  document.title = (fail === 0 ? 'PASS' : 'FAIL') + ' — ' + pass + '/' + (pass + fail);
-  window.__testResults = { pass: pass, fail: fail };
+  /* ------------------------------------------------- the rendered chrome
+     Everything above is pure logic, and that is how six of day 042's changes
+     could be reverted one at a time with the suite still reading 145/145: a
+     flag can be correct while what the player sees is wrong. These rows drive
+     the real game booted against the fixture at the top of this file and read
+     the rendered DOM — text, hidden state, computed style, geometry, pixels.
+
+     They are asynchronous: the game advances on requestAnimationFrame, so the
+     summary is written by finish() at the end of the chain. */
+  var G = window.SnakeFlee;
+  var live = document.getElementById('live');
+  var overlay = document.getElementById('overlay');
+  var oTitle = document.getElementById('overlayTitle');
+  var oLine = document.getElementById('overlayLine');
+  var oRecord = document.getElementById('overlayRecord');
+  var markEl = document.querySelector('#bestSlot .mark');
+  var canvasEl = document.getElementById('canvas');
+  var fixture = document.getElementById('fixture');
+
+  function press(k) { window.dispatchEvent(new KeyboardEvent('keydown', { key: k })); }
+  function frames(n, cb) {
+    if (n <= 0) { cb(); return; }
+    requestAnimationFrame(function () { frames(n - 1, cb); });
+  }
+  // The game steps on its own clock, so wait for the state rather than for a
+  // fixed number of frames. 600 frames is ten seconds of budget for a step
+  // that takes five.
+  function until(pred, cb, budget) {
+    if (budget === undefined) budget = 600;
+    if (pred()) { cb(true); return; }
+    if (budget <= 0) { cb(false); return; }
+    requestAnimationFrame(function () { until(pred, cb, budget - 1); });
+  }
+  function shown(el) {
+    return !el.hidden && getComputedStyle(el).display !== 'none';
+  }
+  // One cell centre of the live board, as the browser actually painted it.
+  function pixelAt(cx, cy) {
+    var cell = canvasEl.width / N;
+    var d = canvasEl.getContext('2d')
+      .getImageData(Math.round((cx + 0.5) * cell), Math.round((cy + 0.5) * cell), 1, 1).data;
+    return '#' + [d[0], d[1], d[2]].map(function (v) {
+      return ('0' + v.toString(16)).slice(-2);
+    }).join('');
+  }
+  // The board one cell short of full, head about to take the last free cell.
+  // Score is the seeded best, so the record is taken in the frame that ends
+  // the run — the case commitBest used to eat before anything could read it.
+  function loadAlmostFull(g) {
+    var snake = [{ x: 7, y: 4 }];
+    for (var y = 0; y < N; y++) {
+      for (var x = 0; x < N; x++) {
+        if (x === 7 && (y === 3 || y === 4)) continue;
+        snake.push({ x: x, y: y });
+      }
+    }
+    g.snake = snake; g.grow = 0; g.score = N * N - 3;
+    g.dir = G.DIRS.up; g.dirMoved = G.DIRS.up;
+    g.food = { x: 7, y: 3 }; g.clock = 0; g.over = false; g.won = false;
+  }
+
+  function restoreBest() {
+    if (!window.__seeded) return;
+    try {
+      if (window.__realBest === null) localStorage.removeItem(S.BEST_KEY);
+      else localStorage.setItem(S.BEST_KEY, window.__realBest);
+    } catch (e) { /* it was reachable a moment ago; nothing to do if it is not */ }
+  }
+
+  function finish() {
+    restoreBest();
+    var summary = document.getElementById('summary');
+    summary.textContent = pass + ' passed, ' + fail + ' failed';
+    summary.className = 'summary ' + (fail === 0 ? 'ok' : 'bad');
+    document.title = (fail === 0 ? 'PASS' : 'FAIL') + ' — ' + pass + '/' + (pass + fail);
+    window.__testResults = { pass: pass, fail: fail };
+  }
+
+  // A run that dies into its own body, at whatever score is already set.
+  function loadDeath(g) {
+    g.snake = [{ x: 5, y: 5 }, { x: 6, y: 5 }, { x: 6, y: 6 }, { x: 5, y: 6 }, { x: 4, y: 6 }];
+    g.dir = G.DIRS.down; g.dirMoved = G.DIRS.left;
+    g.food = { x: 15, y: 15 };
+  }
+
+  /* 0. Warm-up: leave the best exactly one under the winning score. The seed
+        before app.js does that when storage is reachable; when it is not,
+        boot read 0 and this run is what raises it. Either way the record in
+        step 1 is taken in the frame the run ends, which is the case that
+        reverted silently — not one taken a meal earlier. */
+  frames(2, function () {
+    var g = G.game;
+    press('p');            // starts the run without steering it
+    g.score = N * N - 3;   // 397, one under the score that fills the board
+    loadDeath(g);
+    until(function () { return g.over; }, function (warmed) {
+      ok('the warm-up run ends and banks its score', warmed);
+      press('r');
+
+  // 1. A win that takes the record in the frame it ends.
+    loadAlmostFull(g);
+    until(function () { return g.over; }, function (reached) {
+      ok('the board fills and the run ends', reached);
+      frames(2, function () {
+        eq('a win draws the win card, not the death card', oTitle.textContent, 'you win');
+        ok('the win card is on the board', shown(overlay), overlay.outerHTML.slice(0, 60));
+        eq('the win card is a live region, so it announces itself',
+          overlay.getAttribute('role'), 'status');
+        ok('the win card states the best', /best\s+\d+/.test(oLine.textContent), oLine.textContent);
+        ok('a record win shows the record line', shown(oRecord),
+          'hidden=' + oRecord.hidden + ' display=' + getComputedStyle(oRecord).display);
+        ok('...and the line says it in words', /a new best/.test(oRecord.textContent),
+          JSON.stringify(oRecord.textContent));
+        eq('...and the HUD star is visible', getComputedStyle(markEl).visibility, 'visible');
+        ok('the live region carries the record', /best/.test(live.textContent),
+          JSON.stringify(live.textContent));
+        ok('...and does not repeat the card, so the win is announced once',
+          live.textContent.indexOf('you win') === -1, JSON.stringify(live.textContent));
+        ok('the winning frame paints no food on the full board',
+          pixelAt(7, 3) !== '#a83c1b', pixelAt(7, 3));
+
+        // 2. A death that takes the record. The best is now the winning
+        //    score, so score above it and run into the body.
+        press('r');
+        loadDeath(g);
+        g.score = N * N + 100;
+        until(function () { return g.over; }, function (died) {
+          ok('the record run ends', died);
+          frames(2, function () {
+            eq('a record death still draws the death card', oTitle.textContent, 'game over');
+            ok('a record death shows the record line', shown(oRecord),
+              'hidden=' + oRecord.hidden);
+            ok('...and the line says it in words', /a new best/.test(oRecord.textContent),
+              JSON.stringify(oRecord.textContent));
+            eq('...and the HUD star is visible', getComputedStyle(markEl).visibility, 'visible');
+
+            // 3. A death that takes nothing. The same card, quiet.
+            press('r');
+            loadDeath(g);
+            until(function () { return g.over; }, function (died2) {
+              ok('the ordinary run ends', died2);
+              frames(2, function () {
+                ok('an ordinary death says nothing about a best', !shown(oRecord),
+                  'hidden=' + oRecord.hidden);
+                eq('...and the HUD star is not showing',
+                  getComputedStyle(markEl).visibility, 'hidden');
+
+                // 4. The board is square at a width the column has to clamp.
+                //    130 px of column leaves 98 px of content, under the
+                //    160 px floor the layout asks for, so max-width cuts the
+                //    width and the height has to follow it.
+                fixture.style.width = '130px';
+                frames(3, function () {
+                  var r = canvasEl.getBoundingClientRect();
+                  var w = Math.round(r.width), h = Math.round(r.height);
+                  ok('the clamp bites: the board is narrower than the 160 px floor',
+                    w > 0 && w < 160, w + 'px');
+                  ok('the board is still square under the clamp', w === h, w + 'x' + h);
+                  eq('...because the height follows the width, by rule',
+                    getComputedStyle(canvasEl).aspectRatio, '1 / 1');
+                  fixture.style.width = '';
+                  finish();
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+    });
+  });
 })();
 </script>
 </body>
