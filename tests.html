@@ -597,7 +597,22 @@ try {
     } catch (e) { /* it was reachable a moment ago; nothing to do if it is not */ }
   }
 
+  /* One way out, whatever happens. The rows below run inside the frame's
+     animation frames and a frame that stops — a browser that throttles an
+     off-screen document, a page that never boots — would otherwise leave the
+     suite sitting on "running…" for ever: no count, no failing row, nothing
+     to read. The watchdog turns that into a failure like any other. */
+  var finished = false;
+  var watchdog = setTimeout(function () {
+    ok('the page under test keeps stepping', false,
+      'the chain stalled: no animation frame from the page in 60 s');
+    finish();
+  }, 60000);
+
   function finish() {
+    if (finished) return;
+    finished = true;
+    clearTimeout(watchdog);
     restoreBest();
     var summary = document.getElementById('summary');
     summary.textContent = pass + ' passed, ' + fail + ' failed' +
