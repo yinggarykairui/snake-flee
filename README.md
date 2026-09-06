@@ -51,9 +51,16 @@ only when that arrangement measures larger than stacking them.
 ## How to run
 
 Open `index.html` in any browser — no build step, no dependencies, no server.
-`tests.html` opens the same way and runs 168 assertions. Most are pure logic;
-the last of them drive the real page and read what it renders. The count is
-the same in a private window, where storage throws.
+
+`tests.html` opens the same way, and how much of it runs depends on how you
+opened it. Served over http — `python3 -m http.server` in this folder, then
+`localhost:8000/tests.html` — it runs 177 assertions: 145 of pure logic, and
+32 that mount `index.html` itself in a frame and drive the page you ship, at
+a viewport the suite sets rather than the one the window happens to be. Off
+the disk over `file://` those last 32 cannot run at all, because a sibling
+file is a separate origin there and the frame is closed to the suite, so it
+reports 145 passed and one skipped row saying exactly that. Either way the
+count is the same in a private window, where storage throws.
 
 ## Why it exists
 
